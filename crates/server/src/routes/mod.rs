@@ -17,6 +17,7 @@ pub mod execution_processes;
 pub mod frontend;
 pub mod health;
 pub mod host_relay;
+pub mod kanban_v1;
 pub mod oauth;
 pub mod organizations;
 pub mod preview;
@@ -55,6 +56,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(terminal::router())
         .route("/ssh-session", get(ssh_session::ssh_session_ws))
         .nest("/remote", remote::router())
+        .nest("/remote/v1", kanban_v1::router())
         .merge(webrtc::router())
         .nest("/attachments", attachments::routes())
         .layer(axum::middleware::from_fn_with_state(

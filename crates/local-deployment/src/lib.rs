@@ -157,6 +157,11 @@ impl Deployment for LocalDeployment {
             });
         }
 
+        // Ensure default organization and project exist for local Kanban
+        if let Err(e) = db::kanban_bootstrap::ensure_default_organization_and_project(&db.pool).await {
+            tracing::warn!("Failed to bootstrap default kanban data: {}", e);
+        }
+
         let approvals = Approvals::new();
         let queued_message_service = QueuedMessageService::new();
 

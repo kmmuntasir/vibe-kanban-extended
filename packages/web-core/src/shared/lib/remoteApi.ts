@@ -49,7 +49,17 @@ export const makeRequest = async (
   options: RequestInit = {},
   retryOn401 = true
 ): Promise<Response> => {
-  return makeAuthenticatedRequest(getRemoteApiUrl(), path, options, retryOn401);
+  let baseUrl = getRemoteApiUrl();
+  let requestPath = path;
+
+  // When no remote API base is configured, route kanban requests
+  // through the local server's /api/remote/v1/* endpoints
+  if (!baseUrl && path.startsWith('/v1/')) {
+    baseUrl = window.location.origin;
+    requestPath = `/api/remote${path}`;
+  }
+
+  return makeAuthenticatedRequest(baseUrl, requestPath, options, retryOn401);
 };
 
 async function makeAuthenticatedRequest(
