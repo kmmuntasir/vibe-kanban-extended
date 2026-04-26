@@ -16,7 +16,26 @@ pub struct KanbanTag {
     pub updated_at: DateTime<Utc>,
 }
 
+const DEFAULT_TAGS: &[(&str, &str)] = &[
+    ("bug", "355 65% 53%"),
+    ("feature", "124 82% 30%"),
+    ("documentation", "205 100% 40%"),
+    ("enhancement", "181 72% 78%"),
+];
+
 impl KanbanTag {
+    pub async fn create_defaults_for_project(
+        pool: &SqlitePool,
+        project_id: Uuid,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        let mut tags = Vec::with_capacity(DEFAULT_TAGS.len());
+        for (name, color) in DEFAULT_TAGS {
+            let tag = Self::create(pool, project_id, name, color).await?;
+            tags.push(tag);
+        }
+        Ok(tags)
+    }
+
     pub async fn find_by_project(
         pool: &SqlitePool,
         project_id: Uuid,

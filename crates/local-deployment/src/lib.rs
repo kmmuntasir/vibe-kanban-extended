@@ -45,6 +45,7 @@ use worktree_manager::WorktreeManager;
 use crate::{container::LocalContainerService, pty::PtyService};
 mod command;
 pub mod container;
+mod first_boot;
 mod copy;
 pub mod pty;
 
@@ -145,6 +146,10 @@ impl Deployment for LocalDeployment {
             );
             DBService::new_with_after_connect(hook).await?
         };
+
+        first_boot::initialize_if_empty(&db).await.map_err(|e| {
+            DeploymentError::Other(anyhow::anyhow!("First boot initialization failed: {}", e))
+        })?;
 
         let file = FileService::new(db.clone().pool)?;
         {
