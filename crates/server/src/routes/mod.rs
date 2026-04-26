@@ -42,7 +42,6 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(workspaces::router(&deployment))
         .merge(execution_processes::router(&deployment))
         .merge(tags::router(&deployment))
-        .merge(kanban_v1::router())
         .merge(oauth::router())
         .merge(organizations::router())
         .merge(filesystem::router())
@@ -57,7 +56,6 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(terminal::router())
         .route("/ssh-session", get(ssh_session::ssh_session_ws))
         .nest("/remote", remote::router())
-        .nest("/kanban/v1", kanban_v1::router())
         .merge(webrtc::router())
         .nest("/attachments", attachments::routes())
         .layer(axum::middleware::from_fn_with_state(
