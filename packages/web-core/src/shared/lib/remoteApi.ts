@@ -44,11 +44,46 @@ export function getRemoteApiUrl(): string {
 // Backward-compatible export — consumers should migrate to getRemoteApiUrl()
 export const REMOTE_API_URL = BUILD_TIME_API_BASE;
 
+const KANBAN_PATH_PREFIXES = [
+  '/v1/organizations',
+  '/v1/projects',
+  '/v1/project_statuses',
+  '/v1/issues',
+  '/v1/tags',
+  '/v1/issue_assignees',
+  '/v1/issue_relationships',
+  '/v1/issue_tags',
+  '/v1/issue_comments',
+  '/v1/workspaces',
+];
+
+function isLocalMode(): boolean {
+  return !getRemoteApiUrl();
+}
+
+function isKanbanPath(path: string): boolean {
+  return KANBAN_PATH_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
+
+async function localApiRequest(
+  path: string,
+  options: RequestInit = {}
+): Promise<Response> {
+  const headers = new Headers(options.headers ?? {});
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+  return fetch(`/api/remote${path}`, { ...options, headers });
+}
+
 export const makeRequest = async (
   path: string,
   options: RequestInit = {},
   retryOn401 = true
 ): Promise<Response> => {
+  if (isLocalMode() && isKanbanPath(path)) {
+    return localApiRequest(path, options);
+  }
   return makeAuthenticatedRequest(getRemoteApiUrl(), path, options, retryOn401);
 };
 
