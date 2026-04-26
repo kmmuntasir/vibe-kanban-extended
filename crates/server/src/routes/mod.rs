@@ -75,6 +75,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(relay_auth::router())
         .merge(host_relay::router(&deployment))
         .merge(relay_signed_routes)
+        .nest("/remote/v1", kanban_v1::router())
         .layer(ValidateRequestHeaderLayer::custom(
             middleware::validate_origin,
         ))

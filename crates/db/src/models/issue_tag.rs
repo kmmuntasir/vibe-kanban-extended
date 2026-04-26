@@ -28,11 +28,31 @@ impl IssueTag {
         .await
     }
 
+    pub async fn find_by_project(
+        pool: &SqlitePool,
+        project_id: Uuid,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            IssueTag,
+            r#"SELECT it.id as "id!: Uuid",
+                      it.issue_id as "issue_id!: Uuid",
+                      it.tag_id as "tag_id!: Uuid"
+               FROM issue_tags it
+               JOIN issues i ON i.id = it.issue_id
+               WHERE i.project_id = $1"#,
+            project_id
+        )
+        .fetch_all(pool)
+        .await
+    }
+
     pub async fn create(
         pool: &SqlitePool,
+        id: Option<Uuid>,
         issue_id: Uuid,
         tag_id: Uuid,
     ) -> Result<Self, sqlx::Error> {
+        let id = id.unwrap_or_else(Uuid::new_v4);
         sqlx::query_as!(
             IssueTag,
             r#"INSERT INTO issue_tags (id, issue_id, tag_id)
@@ -40,7 +60,7 @@ impl IssueTag {
                RETURNING id as "id!: Uuid",
                          issue_id as "issue_id!: Uuid",
                          tag_id as "tag_id!: Uuid""#,
-            Uuid::new_v4(),
+            id,
             issue_id,
             tag_id
         )

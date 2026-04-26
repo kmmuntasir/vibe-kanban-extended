@@ -34,12 +34,34 @@ impl IssueRelationship {
         .await
     }
 
+    pub async fn find_by_project(
+        pool: &SqlitePool,
+        project_id: Uuid,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            IssueRelationship,
+            r#"SELECT ir.id as "id!: Uuid",
+                      ir.issue_id as "issue_id!: Uuid",
+                      ir.related_issue_id as "related_issue_id!: Uuid",
+                      ir.relationship_type,
+                      ir.created_at as "created_at!: DateTime<Utc>"
+               FROM issue_relationships ir
+               JOIN issues i ON i.id = ir.issue_id
+               WHERE i.project_id = $1"#,
+            project_id
+        )
+        .fetch_all(pool)
+        .await
+    }
+
     pub async fn create(
         pool: &SqlitePool,
+        id: Option<Uuid>,
         issue_id: Uuid,
         related_issue_id: Uuid,
         relationship_type: &str,
     ) -> Result<Self, sqlx::Error> {
+        let id = id.unwrap_or_else(Uuid::new_v4);
         sqlx::query_as!(
             IssueRelationship,
             r#"INSERT INTO issue_relationships (id, issue_id, related_issue_id, relationship_type)
@@ -49,7 +71,7 @@ impl IssueRelationship {
                          related_issue_id as "related_issue_id!: Uuid",
                          relationship_type,
                          created_at as "created_at!: DateTime<Utc>""#,
-            Uuid::new_v4(),
+            id,
             issue_id,
             related_issue_id,
             relationship_type

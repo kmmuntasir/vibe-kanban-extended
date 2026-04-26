@@ -32,11 +32,32 @@ impl IssueAssignee {
         .await
     }
 
+    pub async fn find_by_project(
+        pool: &SqlitePool,
+        project_id: Uuid,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            IssueAssignee,
+            r#"SELECT ia.id as "id!: Uuid",
+                      ia.issue_id as "issue_id!: Uuid",
+                      ia.user_id as "user_id!: Uuid",
+                      ia.assigned_at as "assigned_at!: DateTime<Utc>"
+               FROM issue_assignees ia
+               JOIN issues i ON i.id = ia.issue_id
+               WHERE i.project_id = $1"#,
+            project_id
+        )
+        .fetch_all(pool)
+        .await
+    }
+
     pub async fn create(
         pool: &SqlitePool,
+        id: Option<Uuid>,
         issue_id: Uuid,
         user_id: Uuid,
     ) -> Result<Self, sqlx::Error> {
+        let id = id.unwrap_or_else(Uuid::new_v4);
         sqlx::query_as!(
             IssueAssignee,
             r#"INSERT INTO issue_assignees (id, issue_id, user_id)
@@ -45,7 +66,7 @@ impl IssueAssignee {
                          issue_id as "issue_id!: Uuid",
                          user_id as "user_id!: Uuid",
                          assigned_at as "assigned_at!: DateTime<Utc>""#,
-            Uuid::new_v4(),
+            id,
             issue_id,
             user_id
         )
