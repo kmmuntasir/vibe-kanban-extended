@@ -32,6 +32,7 @@ pub mod ssh_session;
 pub mod tags;
 pub mod terminal;
 pub mod webrtc;
+pub mod kanban_v1;
 pub mod workspaces;
 
 pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
@@ -57,6 +58,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(terminal::router())
         .route("/ssh-session", get(ssh_session::ssh_session_ws))
         .nest("/remote", remote::router())
+        .nest("/kanban/v1", kanban_v1::router())
         .merge(webrtc::router())
         .nest("/attachments", attachments::routes())
         .layer(axum::middleware::from_fn_with_state(

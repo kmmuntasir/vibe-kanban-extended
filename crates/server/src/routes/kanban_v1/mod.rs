@@ -1,3 +1,4 @@
+mod issues;
 pub mod shape_fallbacks;
 
 use axum::{Router, routing::get};
@@ -13,4 +14,5 @@ pub fn router() -> Router<DeploymentImpl> {
         .route("/fallback/issue_assignees", get(fallback_list_issue_assignees))
         .route("/fallback/issue_tags", get(fallback_list_issue_tags))
         .route("/fallback/issue_relationships", get(fallback_list_issue_relationships))
+        .merge(issues::router())
 }
