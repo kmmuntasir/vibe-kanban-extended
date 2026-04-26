@@ -50,3 +50,21 @@ pub struct ListProjectStatusesQuery {
 pub struct ListProjectStatusesResponse {
     pub project_statuses: Vec<ProjectStatus>,
 }
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct BulkUpdateProjectStatusItem {
+    pub id: Uuid,
+    #[serde(flatten)]
+    pub changes: UpdateProjectStatusRequest,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct BulkUpdateProjectStatusesRequest {
+    pub updates: Vec<BulkUpdateProjectStatusItem>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct BulkUpdateProjectStatusesResponse {
+    pub data: Vec<ProjectStatus>,
+    pub txid: i64,
+}

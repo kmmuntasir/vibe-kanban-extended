@@ -55,7 +55,10 @@ pub struct GetOrganizationResponse {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct CreateOrganizationRequest {
     pub name: String,
-    pub slug: String,
+    /// Optional slug. When omitted (local/SQLite use), auto-generated from name.
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub slug: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

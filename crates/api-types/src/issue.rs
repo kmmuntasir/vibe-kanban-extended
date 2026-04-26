@@ -202,3 +202,21 @@ pub struct ListIssuesResponse {
     pub limit: usize,
     pub offset: usize,
 }
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct BulkUpdateIssueItem {
+    pub id: Uuid,
+    #[serde(flatten)]
+    pub changes: UpdateIssueRequest,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct BulkUpdateIssuesRequest {
+    pub updates: Vec<BulkUpdateIssueItem>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct BulkUpdateIssuesResponse {
+    pub data: Vec<Issue>,
+    pub txid: i64,
+}

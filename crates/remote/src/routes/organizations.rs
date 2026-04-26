@@ -35,7 +35,10 @@ async fn create_organization(
     Json(payload): Json<CreateOrganizationRequest>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
     let name = payload.name.trim();
-    let slug = payload.slug.trim();
+    let slug = match &payload.slug {
+        Some(s) => s.trim(),
+        None => name.to_lowercase().replace(' ', "-"),
+    };
 
     if name.is_empty() || name.len() > 100 {
         return Err(ErrorResponse::new(
