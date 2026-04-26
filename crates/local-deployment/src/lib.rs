@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-use api_types::LoginStatus;
+use api_types::{LoginStatus, ProfileResponse, ProviderProfile};
 use async_trait::async_trait;
 use client_info::ClientInfo;
 use db::DBService;
@@ -403,6 +403,25 @@ impl LocalDeployment {
     }
 
     pub async fn get_login_status(&self) -> LoginStatus {
+        let Ok(_client) = self.remote_client() else {
+            let local_profile = ProfileResponse {
+                user_id: Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
+                username: Some("local-user".to_string()),
+                email: "local@localhost".to_string(),
+                providers: vec![ProviderProfile {
+                    provider: "local".to_string(),
+                    username: Some("local-user".to_string()),
+                    display_name: Some("Local User".to_string()),
+                    email: Some("local@localhost".to_string()),
+                    avatar_url: None,
+                }],
+            };
+            self.auth_context.set_profile(local_profile.clone()).await;
+            return LoginStatus::LoggedIn {
+                profile: Some(local_profile),
+            };
+        };
+
         if self.auth_context.get_credentials().await.is_none() {
             self.auth_context.clear_profile().await;
             self.auth_context.clear_remote_auth_degraded_slug().await;
