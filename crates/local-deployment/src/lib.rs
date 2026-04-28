@@ -46,7 +46,7 @@ use crate::{container::LocalContainerService, pty::PtyService};
 mod command;
 pub mod container;
 mod copy;
-mod first_boot;
+pub mod first_boot;
 pub mod pty;
 
 #[derive(Clone)]
