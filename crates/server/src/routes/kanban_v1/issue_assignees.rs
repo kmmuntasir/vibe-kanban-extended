@@ -1,11 +1,11 @@
 use axum::{
-    Json,
+    Json, Router,
     extract::{Path, Query, State},
     http::StatusCode,
-    routing::{delete, get, post},
-    Router,
+    routing::get,
 };
 use db::models::issue_assignee::IssueAssignee;
+use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -31,7 +31,10 @@ pub struct CreateIssueAssigneeRequest {
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/", get(list_issue_assignees).post(create_issue_assignee))
-        .route("/{assignee_id}", get(get_issue_assignee).delete(delete_issue_assignee))
+        .route(
+            "/{assignee_id}",
+            get(get_issue_assignee).delete(delete_issue_assignee),
+        )
 }
 
 async fn list_issue_assignees(
@@ -50,20 +53,10 @@ async fn get_issue_assignee(
     Path(assignee_id): Path<Uuid>,
 ) -> Result<Json<IssueAssignee>, ErrorResponse> {
     let pool = &deployment.db().pool;
-    let assignee = sqlx::query_as!(
-        IssueAssignee,
-        r#"SELECT id as "id!: Uuid",
-                  issue_id as "issue_id!: Uuid",
-                  user_id as "user_id!: Uuid",
-                  assigned_at as "assigned_at!: DateTime<Utc>"
-           FROM issue_assignees
-           WHERE id = $1"#,
-        assignee_id
-    )
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| db_error(e, "failed to get issue assignee"))?
-    .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "issue assignee not found"))?;
+    let assignee = IssueAssignee::find_by_id(pool, assignee_id)
+        .await
+        .map_err(|e| db_error(e, "failed to get issue assignee"))?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "issue assignee not found"))?;
     Ok(Json(assignee))
 }
 
@@ -72,7 +65,7 @@ async fn create_issue_assignee(
     Json(payload): Json<CreateIssueAssigneeRequest>,
 ) -> Result<Json<MutationResponse<IssueAssignee>>, ErrorResponse> {
     let pool = &deployment.db().pool;
-    let assignee = IssueAssignee::create(pool, payload.issue_id, payload.user_id)
+    let assignee = IssueAssignee::create(pool, None, payload.issue_id, payload.user_id)
         .await
         .map_err(|e| db_error(e, "failed to create issue assignee"))?;
     Ok(Json(MutationResponse {

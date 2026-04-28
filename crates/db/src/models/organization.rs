@@ -39,6 +39,7 @@ impl Organization {
             return Ok(org);
         }
 
+        let id = Uuid::new_v4();
         let org = sqlx::query_as!(
             Organization,
             r#"INSERT INTO organizations (id, name, slug, is_personal, issue_prefix)
@@ -50,7 +51,7 @@ impl Organization {
                          issue_prefix,
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
-            Uuid::new_v4(),
+            id,
             "My Workspace",
             "local",
             false,
@@ -103,6 +104,7 @@ impl Organization {
         slug: &str,
         issue_prefix: &str,
     ) -> Result<Self, sqlx::Error> {
+        let id = Uuid::new_v4();
         sqlx::query_as!(
             Organization,
             r#"INSERT INTO organizations (id, name, slug, issue_prefix)
@@ -114,7 +116,7 @@ impl Organization {
                          issue_prefix,
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
-            Uuid::new_v4(),
+            id,
             name,
             slug,
             issue_prefix
@@ -123,11 +125,7 @@ impl Organization {
         .await
     }
 
-    pub async fn update_name(
-        pool: &SqlitePool,
-        id: Uuid,
-        name: &str,
-    ) -> Result<Self, sqlx::Error> {
+    pub async fn update_name(pool: &SqlitePool, id: Uuid, name: &str) -> Result<Self, sqlx::Error> {
         sqlx::query_as!(
             Organization,
             r#"UPDATE organizations

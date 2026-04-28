@@ -51,6 +51,21 @@ impl IssueAssignee {
         .await
     }
 
+    pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            IssueAssignee,
+            r#"SELECT id as "id!: Uuid",
+                      issue_id as "issue_id!: Uuid",
+                      user_id as "user_id!: Uuid",
+                      assigned_at as "assigned_at!: DateTime<Utc>"
+               FROM issue_assignees
+               WHERE id = $1"#,
+            id
+        )
+        .fetch_optional(pool)
+        .await
+    }
+
     pub async fn create(
         pool: &SqlitePool,
         id: Option<Uuid>,
@@ -71,25 +86,6 @@ impl IssueAssignee {
             user_id
         )
         .fetch_one(pool)
-        .await
-    }
-
-    pub async fn find_by_project(
-        pool: &SqlitePool,
-        project_id: Uuid,
-    ) -> Result<Vec<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            IssueAssignee,
-            r#"SELECT ia.id as "id!: Uuid",
-                      ia.issue_id as "issue_id!: Uuid",
-                      ia.user_id as "user_id!: Uuid",
-                      ia.assigned_at as "assigned_at!: DateTime<Utc>"
-               FROM issue_assignees ia
-               JOIN issues i ON i.id = ia.issue_id
-               WHERE i.project_id = $1"#,
-            project_id
-        )
-        .fetch_all(pool)
         .await
     }
 

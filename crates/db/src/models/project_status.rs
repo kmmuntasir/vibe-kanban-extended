@@ -49,6 +49,24 @@ impl ProjectStatus {
         .await
     }
 
+    pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            ProjectStatus,
+            r#"SELECT id as "id!: Uuid",
+                      project_id as "project_id!: Uuid",
+                      name,
+                      color,
+                      sort_order as "sort_order!: i32",
+                      hidden as "hidden: bool",
+                      created_at as "created_at!: DateTime<Utc>"
+               FROM project_statuses
+               WHERE id = $1"#,
+            id
+        )
+        .fetch_optional(pool)
+        .await
+    }
+
     pub async fn create(
         pool: &SqlitePool,
         project_id: Uuid,
@@ -57,6 +75,7 @@ impl ProjectStatus {
         sort_order: i32,
         hidden: bool,
     ) -> Result<Self, sqlx::Error> {
+        let id = Uuid::new_v4();
         sqlx::query_as!(
             ProjectStatus,
             r#"INSERT INTO project_statuses (id, project_id, name, color, sort_order, hidden)
@@ -68,7 +87,7 @@ impl ProjectStatus {
                          sort_order as "sort_order!: i32",
                          hidden as "hidden: bool",
                          created_at as "created_at!: DateTime<Utc>""#,
-            Uuid::new_v4(),
+            id,
             project_id,
             name,
             color,

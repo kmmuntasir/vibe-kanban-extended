@@ -17,6 +17,20 @@ pub enum IssuePriority {
     Low,
 }
 
+impl std::str::FromStr for IssuePriority {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "urgent" => Ok(Self::Urgent),
+            "high" => Ok(Self::High),
+            "medium" => Ok(Self::Medium),
+            "low" => Ok(Self::Low),
+            _ => Err(format!("unknown priority: {}", s)),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS, sqlx::FromRow)]
 pub struct Issue {
     pub id: Uuid,

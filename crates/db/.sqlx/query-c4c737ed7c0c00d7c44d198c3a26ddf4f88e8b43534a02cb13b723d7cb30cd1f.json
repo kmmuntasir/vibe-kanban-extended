@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT o.issue_prefix\n               FROM organizations o\n               JOIN projects p ON p.organization_id = o.id\n               WHERE p.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "issue_prefix",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "c4c737ed7c0c00d7c44d198c3a26ddf4f88e8b43534a02cb13b723d7cb30cd1f"
+}

@@ -1,5 +1,4 @@
 use db::DBService;
-use sqlx::SqlitePool;
 use uuid::Uuid;
 
 const DEFAULT_STATUSES: &[(&str, &str, i32, bool)] = &[
@@ -32,53 +31,53 @@ pub async fn initialize_if_empty(db: &DBService) -> Result<(), sqlx::Error> {
     let mut tx = pool.begin().await?;
 
     let org_id = Uuid::new_v5(&Uuid::NAMESPACE_DNS, b"vibe-kanban-local");
-    sqlx::query!(
+    sqlx::query(
         r#"INSERT INTO organizations (id, name, slug, issue_prefix)
            VALUES ($1, $2, $3, $4)"#,
-        org_id,
-        "My Workspace",
-        "local-workspace",
-        "VK"
     )
+    .bind(org_id)
+    .bind("My Workspace")
+    .bind("local-workspace")
+    .bind("VK")
     .execute(&mut *tx)
     .await?;
 
     let project_id = Uuid::new_v4();
-    sqlx::query!(
+    sqlx::query(
         r#"INSERT INTO projects (id, name, color, issue_counter, organization_id)
            VALUES ($1, $2, $3, 0, $4)"#,
-        project_id,
-        "Main Project",
-        "217 91% 60%",
-        org_id
     )
+    .bind(project_id)
+    .bind("Main Project")
+    .bind("217 91% 60%")
+    .bind(org_id)
     .execute(&mut *tx)
     .await?;
 
     for (name, color, sort_order, hidden) in DEFAULT_STATUSES {
-        sqlx::query!(
+        sqlx::query(
             r#"INSERT INTO project_statuses (id, project_id, name, color, sort_order, hidden)
                VALUES ($1, $2, $3, $4, $5, $6)"#,
-            Uuid::new_v4(),
-            project_id,
-            *name,
-            *color,
-            *sort_order,
-            hidden
         )
+        .bind(Uuid::new_v4())
+        .bind(project_id)
+        .bind(*name)
+        .bind(*color)
+        .bind(*sort_order)
+        .bind(hidden)
         .execute(&mut *tx)
         .await?;
     }
 
     for (name, color) in DEFAULT_TAGS {
-        sqlx::query!(
+        sqlx::query(
             r#"INSERT INTO kanban_tags (id, project_id, name, color)
                VALUES ($1, $2, $3, $4)"#,
-            Uuid::new_v4(),
-            project_id,
-            *name,
-            *color
         )
+        .bind(Uuid::new_v4())
+        .bind(project_id)
+        .bind(*name)
+        .bind(*color)
         .execute(&mut *tx)
         .await?;
     }
@@ -91,12 +90,13 @@ pub async fn initialize_if_empty(db: &DBService) -> Result<(), sqlx::Error> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use sqlx::SqlitePoolOptions;
-    use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode};
     use std::str::FromStr;
 
-    async fn setup_pool() -> SqlitePool {
+    use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
+
+    use super::*;
+
+    async fn setup_pool() -> sqlx::SqlitePool {
         let opts = SqliteConnectOptions::from_str("sqlite::memory:")
             .unwrap()
             .journal_mode(SqliteJournalMode::Memory);
@@ -117,32 +117,28 @@ mod tests {
         let db = DBService { pool };
         initialize_if_empty(&db).await.unwrap();
 
-        let org_count: i64 =
-            sqlx::query_scalar("SELECT COUNT(*) FROM organizations")
-                .fetch_one(&db.pool)
-                .await
-                .unwrap();
+        let org_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM organizations")
+            .fetch_one(&db.pool)
+            .await
+            .unwrap();
         assert_eq!(org_count, 1);
 
-        let project_count: i64 =
-            sqlx::query_scalar("SELECT COUNT(*) FROM projects")
-                .fetch_one(&db.pool)
-                .await
-                .unwrap();
+        let project_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM projects")
+            .fetch_one(&db.pool)
+            .await
+            .unwrap();
         assert_eq!(project_count, 1);
 
-        let status_count: i64 =
-            sqlx::query_scalar("SELECT COUNT(*) FROM project_statuses")
-                .fetch_one(&db.pool)
-                .await
-                .unwrap();
+        let status_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM project_statuses")
+            .fetch_one(&db.pool)
+            .await
+            .unwrap();
         assert_eq!(status_count, 6);
 
-        let tag_count: i64 =
-            sqlx::query_scalar("SELECT COUNT(*) FROM kanban_tags")
-                .fetch_one(&db.pool)
-                .await
-                .unwrap();
+        let tag_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM kanban_tags")
+            .fetch_one(&db.pool)
+            .await
+            .unwrap();
         assert_eq!(tag_count, 4);
 
         let prefix: String = sqlx::query_scalar("SELECT issue_prefix FROM organizations")
@@ -166,25 +162,22 @@ mod tests {
         initialize_if_empty(&db).await.unwrap();
         initialize_if_empty(&db).await.unwrap();
 
-        let org_count: i64 =
-            sqlx::query_scalar("SELECT COUNT(*) FROM organizations")
-                .fetch_one(&db.pool)
-                .await
-                .unwrap();
+        let org_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM organizations")
+            .fetch_one(&db.pool)
+            .await
+            .unwrap();
         assert_eq!(org_count, 1);
 
-        let status_count: i64 =
-            sqlx::query_scalar("SELECT COUNT(*) FROM project_statuses")
-                .fetch_one(&db.pool)
-                .await
-                .unwrap();
+        let status_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM project_statuses")
+            .fetch_one(&db.pool)
+            .await
+            .unwrap();
         assert_eq!(status_count, 6);
 
-        let tag_count: i64 =
-            sqlx::query_scalar("SELECT COUNT(*) FROM kanban_tags")
-                .fetch_one(&db.pool)
-                .await
-                .unwrap();
+        let tag_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM kanban_tags")
+            .fetch_one(&db.pool)
+            .await
+            .unwrap();
         assert_eq!(tag_count, 4);
     }
 }

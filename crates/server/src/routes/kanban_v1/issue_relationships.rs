@@ -1,11 +1,11 @@
 use axum::{
-    Json,
+    Json, Router,
     extract::{Path, Query, State},
     http::StatusCode,
-    routing::{delete, get, post},
-    Router,
+    routing::get,
 };
 use db::models::issue_relationship::IssueRelationship;
+use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -59,23 +59,10 @@ async fn get_issue_relationship(
     Path(relationship_id): Path<Uuid>,
 ) -> Result<Json<IssueRelationship>, ErrorResponse> {
     let pool = &deployment.db().pool;
-    let relationship = sqlx::query_as!(
-        IssueRelationship,
-        r#"SELECT id as "id!: Uuid",
-                  issue_id as "issue_id!: Uuid",
-                  related_issue_id as "related_issue_id!: Uuid",
-                  relationship_type,
-                  created_at as "created_at!: DateTime<Utc>"
-           FROM issue_relationships
-           WHERE id = $1"#,
-        relationship_id
-    )
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| db_error(e, "failed to get issue relationship"))?
-    .ok_or_else(|| {
-        ErrorResponse::new(StatusCode::NOT_FOUND, "issue relationship not found")
-    })?;
+    let relationship = IssueRelationship::find_by_id(pool, relationship_id)
+        .await
+        .map_err(|e| db_error(e, "failed to get issue relationship"))?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "issue relationship not found"))?;
     Ok(Json(relationship))
 }
 
@@ -86,6 +73,7 @@ async fn create_issue_relationship(
     let pool = &deployment.db().pool;
     let relationship = IssueRelationship::create(
         pool,
+        None,
         payload.issue_id,
         payload.related_issue_id,
         &payload.relationship_type,

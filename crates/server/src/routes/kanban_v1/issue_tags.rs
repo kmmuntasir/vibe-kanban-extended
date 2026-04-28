@@ -1,11 +1,11 @@
 use axum::{
-    Json,
+    Json, Router,
     extract::{Path, Query, State},
     http::StatusCode,
-    routing::{delete, get, post},
-    Router,
+    routing::get,
 };
 use db::models::issue_tag::IssueTag;
+use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -31,7 +31,10 @@ pub struct CreateIssueTagRequest {
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/", get(list_issue_tags).post(create_issue_tag))
-        .route("/{issue_tag_id}", get(get_issue_tag).delete(delete_issue_tag))
+        .route(
+            "/{issue_tag_id}",
+            get(get_issue_tag).delete(delete_issue_tag),
+        )
 }
 
 async fn list_issue_tags(
@@ -50,19 +53,10 @@ async fn get_issue_tag(
     Path(issue_tag_id): Path<Uuid>,
 ) -> Result<Json<IssueTag>, ErrorResponse> {
     let pool = &deployment.db().pool;
-    let issue_tag = sqlx::query_as!(
-        IssueTag,
-        r#"SELECT id as "id!: Uuid",
-                  issue_id as "issue_id!: Uuid",
-                  tag_id as "tag_id!: Uuid"
-           FROM issue_tags
-           WHERE id = $1"#,
-        issue_tag_id
-    )
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| db_error(e, "failed to get issue tag"))?
-    .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "issue tag not found"))?;
+    let issue_tag = IssueTag::find_by_id(pool, issue_tag_id)
+        .await
+        .map_err(|e| db_error(e, "failed to get issue tag"))?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "issue tag not found"))?;
     Ok(Json(issue_tag))
 }
 
@@ -71,7 +65,7 @@ async fn create_issue_tag(
     Json(payload): Json<CreateIssueTagRequest>,
 ) -> Result<Json<MutationResponse<IssueTag>>, ErrorResponse> {
     let pool = &deployment.db().pool;
-    let issue_tag = IssueTag::create(pool, payload.issue_id, payload.tag_id)
+    let issue_tag = IssueTag::create(pool, None, payload.issue_id, payload.tag_id)
         .await
         .map_err(|e| db_error(e, "failed to create issue tag"))?;
     Ok(Json(MutationResponse {

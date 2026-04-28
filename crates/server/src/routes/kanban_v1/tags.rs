@@ -1,15 +1,17 @@
 use axum::{
-    Json,
+    Json, Router,
     extract::{Path, Query, State},
     http::StatusCode,
-    routing::{delete, get, patch, post},
-    Router,
+    routing::get,
 };
 use db::models::kanban_tag::KanbanTag;
+use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{DeleteResponse, ErrorResponse, MutationResponse, db_error, is_valid_hsl_color, local_txid};
+use super::{
+    DeleteResponse, ErrorResponse, MutationResponse, db_error, is_valid_hsl_color, local_txid,
+};
 use crate::DeploymentImpl;
 
 #[derive(Debug, Deserialize)]
@@ -38,7 +40,10 @@ pub struct UpdateTagRequest {
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/", get(list_tags).post(create_tag))
-        .route("/{tag_id}", get(get_tag).patch(update_tag).delete(delete_tag))
+        .route(
+            "/{tag_id}",
+            get(get_tag).patch(update_tag).delete(delete_tag),
+        )
 }
 
 async fn list_tags(
@@ -57,22 +62,10 @@ async fn get_tag(
     Path(tag_id): Path<Uuid>,
 ) -> Result<Json<KanbanTag>, ErrorResponse> {
     let pool = &deployment.db().pool;
-    let tag = sqlx::query_as!(
-        KanbanTag,
-        r#"SELECT id as "id!: Uuid",
-                  project_id as "project_id!: Uuid",
-                  name,
-                  color,
-                  created_at as "created_at!: DateTime<Utc>",
-                  updated_at as "updated_at!: DateTime<Utc>"
-           FROM kanban_tags
-           WHERE id = $1"#,
-        tag_id
-    )
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| db_error(e, "failed to get tag"))?
-    .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "tag not found"))?;
+    let tag = KanbanTag::find_by_id(pool, tag_id)
+        .await
+        .map_err(|e| db_error(e, "failed to get tag"))?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "tag not found"))?;
     Ok(Json(tag))
 }
 
@@ -105,16 +98,23 @@ async fn update_tag(
 ) -> Result<Json<MutationResponse<KanbanTag>>, ErrorResponse> {
     let pool = &deployment.db().pool;
 
-    if let Some(ref color) = payload.color && !is_valid_hsl_color(color) {
+    if let Some(ref color) = payload.color
+        && !is_valid_hsl_color(color)
+    {
         return Err(ErrorResponse::new(
             StatusCode::BAD_REQUEST,
             "Invalid color format. Expected HSL format: 'H S% L%'",
         ));
     }
 
-    let tag = KanbanTag::update(pool, tag_id, payload.name.as_deref(), payload.color.as_deref())
-        .await
-        .map_err(|e| db_error(e, "failed to update tag"))?;
+    let tag = KanbanTag::update(
+        pool,
+        tag_id,
+        payload.name.as_deref(),
+        payload.color.as_deref(),
+    )
+    .await
+    .map_err(|e| db_error(e, "failed to update tag"))?;
 
     Ok(Json(MutationResponse {
         data: tag,

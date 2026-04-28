@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT ir.id as \"id!: Uuid\",\n                      ir.issue_id as \"issue_id!: Uuid\",\n                      ir.related_issue_id as \"related_issue_id!: Uuid\",\n                      ir.relationship_type,\n                      ir.created_at as \"created_at!: DateTime<Utc>\"\n               FROM issue_relationships ir\n               JOIN issues i ON i.id = ir.issue_id\n               WHERE i.project_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "issue_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "related_issue_id!: Uuid",
+        "ordinal": 2,
+        "type_info": "Blob"
+      },
+      {
+        "name": "relationship_type",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 4,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "23c46f74175a765cbe6c5ab5966d15726c6fd12d7bba49f90217a713391f84e4"
+}

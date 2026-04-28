@@ -47,6 +47,7 @@ impl IssueComment {
         parent_id: Option<Uuid>,
         message: &str,
     ) -> Result<Self, sqlx::Error> {
+        let id = Uuid::new_v4();
         sqlx::query_as!(
             IssueComment,
             r#"INSERT INTO issue_comments (id, issue_id, author_id, parent_id, message)
@@ -58,7 +59,7 @@ impl IssueComment {
                          message,
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
-            Uuid::new_v4(),
+            id,
             issue_id,
             author_id,
             parent_id,
@@ -68,11 +69,7 @@ impl IssueComment {
         .await
     }
 
-    pub async fn update(
-        pool: &SqlitePool,
-        id: Uuid,
-        message: &str,
-    ) -> Result<Self, sqlx::Error> {
+    pub async fn update(pool: &SqlitePool, id: Uuid, message: &str) -> Result<Self, sqlx::Error> {
         sqlx::query_as!(
             IssueComment,
             r#"UPDATE issue_comments

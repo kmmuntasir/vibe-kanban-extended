@@ -80,6 +80,7 @@ pub struct SearchIssuesRequest {
 }
 
 impl Issue {
+    #[allow(clippy::too_many_arguments)]
     pub async fn create(
         pool: &SqlitePool,
         id: Option<Uuid>,
@@ -304,17 +305,10 @@ impl Issue {
         };
 
         let offset = query.offset.unwrap_or(0).max(0) as i64;
-        let limit = query
-            .limit
-            .map(|v| v.max(0) as i64)
-            .unwrap_or(i64::MAX);
+        let limit = query.limit.map(|v| v.max(0) as i64).unwrap_or(i64::MAX);
 
-        let count_sql = format!(
-            "SELECT COUNT(*) as count FROM issues i WHERE {where_clause}"
-        );
-        let row: CountRow = sqlx::query_as(&count_sql)
-            .fetch_one(pool)
-            .await?;
+        let count_sql = format!("SELECT COUNT(*) as count FROM issues i WHERE {where_clause}");
+        let row: CountRow = sqlx::query_as(&count_sql).fetch_one(pool).await?;
         let total_count = row.count;
 
         let data_sql = format!(
@@ -342,6 +336,7 @@ impl Issue {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     #[allow(clippy::too_many_arguments)]
     pub async fn update(
         pool: &SqlitePool,

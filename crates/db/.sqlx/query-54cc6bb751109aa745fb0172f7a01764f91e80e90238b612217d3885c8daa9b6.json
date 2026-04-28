@@ -1,0 +1,122 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE issues\n               SET status_id = COALESCE($2, status_id),\n                   title = COALESCE($3, title),\n                   description = CASE WHEN $4 THEN $5 ELSE description END,\n                   priority = CASE WHEN $6 THEN $7 ELSE priority END,\n                   start_date = CASE WHEN $8 THEN $9 ELSE start_date END,\n                   target_date = CASE WHEN $10 THEN $11 ELSE target_date END,\n                   completed_at = CASE WHEN $12 THEN $13 ELSE completed_at END,\n                   sort_order = COALESCE($14, sort_order),\n                   parent_issue_id = CASE WHEN $15 THEN $16 ELSE parent_issue_id END,\n                   parent_issue_sort_order = CASE WHEN $17 THEN $18 ELSE parent_issue_sort_order END,\n                   extension_metadata = COALESCE($19, extension_metadata),\n                   updated_at = datetime('now', 'subsec')\n               WHERE id = $1\n               RETURNING id as \"id!: Uuid\",\n                         project_id as \"project_id!: Uuid\",\n                         issue_number as \"issue_number!: i32\",\n                         simple_id,\n                         status_id as \"status_id!: Uuid\",\n                         title,\n                         description,\n                         priority,\n                         start_date as \"start_date: DateTime<Utc>\",\n                         target_date as \"target_date: DateTime<Utc>\",\n                         completed_at as \"completed_at: DateTime<Utc>\",\n                         sort_order as \"sort_order!: i32\",\n                         parent_issue_id as \"parent_issue_id: Uuid\",\n                         parent_issue_sort_order,\n                         extension_metadata,\n                         creator_user_id as \"creator_user_id: Uuid\",\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "project_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "issue_number!: i32",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "simple_id",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "status_id!: Uuid",
+        "ordinal": 4,
+        "type_info": "Blob"
+      },
+      {
+        "name": "title",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "description",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "priority",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "start_date: DateTime<Utc>",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "target_date: DateTime<Utc>",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "completed_at: DateTime<Utc>",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "sort_order!: i32",
+        "ordinal": 11,
+        "type_info": "Integer"
+      },
+      {
+        "name": "parent_issue_id: Uuid",
+        "ordinal": 12,
+        "type_info": "Blob"
+      },
+      {
+        "name": "parent_issue_sort_order",
+        "ordinal": 13,
+        "type_info": "Float"
+      },
+      {
+        "name": "extension_metadata",
+        "ordinal": 14,
+        "type_info": "Text"
+      },
+      {
+        "name": "creator_user_id: Uuid",
+        "ordinal": 15,
+        "type_info": "Blob"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 16,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 17,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 19
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "54cc6bb751109aa745fb0172f7a01764f91e80e90238b612217d3885c8daa9b6"
+}

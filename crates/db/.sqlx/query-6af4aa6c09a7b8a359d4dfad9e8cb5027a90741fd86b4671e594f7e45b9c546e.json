@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO projects (id, name, color, issue_counter, organization_id)\n               VALUES ($1, $2, $3, 0, $4)\n               RETURNING id as \"id!: Uuid\",\n                         name,\n                         default_agent_working_dir,\n                         remote_project_id as \"remote_project_id: Uuid\",\n                         color,\n                         issue_counter as \"issue_counter!: i32\",\n                         organization_id as \"organization_id: Uuid\",\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "default_agent_working_dir",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "remote_project_id: Uuid",
+        "ordinal": 3,
+        "type_info": "Blob"
+      },
+      {
+        "name": "color",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "issue_counter!: i32",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "organization_id: Uuid",
+        "ordinal": 6,
+        "type_info": "Blob"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 8,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "6af4aa6c09a7b8a359d4dfad9e8cb5027a90741fd86b4671e594f7e45b9c546e"
+}

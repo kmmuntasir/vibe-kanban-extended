@@ -1,15 +1,17 @@
 use axum::{
-    Json,
+    Json, Router,
     extract::{Path, Query, State},
     http::StatusCode,
-    routing::{delete, get, patch, post},
-    Router,
+    routing::{get, post},
 };
 use db::models::project_status::ProjectStatus;
+use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{DeleteResponse, ErrorResponse, MutationResponse, db_error, is_valid_hsl_color, local_txid};
+use super::{
+    DeleteResponse, ErrorResponse, MutationResponse, db_error, is_valid_hsl_color, local_txid,
+};
 use crate::DeploymentImpl;
 
 #[derive(Debug, Deserialize)]
@@ -88,23 +90,10 @@ async fn get_project_status(
     Path(status_id): Path<Uuid>,
 ) -> Result<Json<ProjectStatus>, ErrorResponse> {
     let pool = &deployment.db().pool;
-    let status = sqlx::query_as!(
-        ProjectStatus,
-        r#"SELECT id as "id!: Uuid",
-                  project_id as "project_id!: Uuid",
-                  name,
-                  color,
-                  sort_order as "sort_order!: i32",
-                  hidden as "hidden: bool",
-                  created_at as "created_at!: DateTime<Utc>"
-           FROM project_statuses
-           WHERE id = $1"#,
-        status_id
-    )
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| db_error(e, "failed to get project status"))?
-    .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "project status not found"))?;
+    let status = ProjectStatus::find_by_id(pool, status_id)
+        .await
+        .map_err(|e| db_error(e, "failed to get project status"))?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "project status not found"))?;
     Ok(Json(status))
 }
 
@@ -144,7 +133,9 @@ async fn update_project_status(
 ) -> Result<Json<MutationResponse<ProjectStatus>>, ErrorResponse> {
     let pool = &deployment.db().pool;
 
-    if let Some(ref color) = payload.color && !is_valid_hsl_color(color) {
+    if let Some(ref color) = payload.color
+        && !is_valid_hsl_color(color)
+    {
         return Err(ErrorResponse::new(
             StatusCode::BAD_REQUEST,
             "Invalid color format. Expected HSL format: 'H S% L%'",
@@ -194,7 +185,9 @@ async fn bulk_update_project_statuses(
     let mut results = Vec::with_capacity(payload.updates.len());
 
     for item in payload.updates {
-        if let Some(ref color) = item.changes.color && !is_valid_hsl_color(color) {
+        if let Some(ref color) = item.changes.color
+            && !is_valid_hsl_color(color)
+        {
             return Err(ErrorResponse::new(
                 StatusCode::BAD_REQUEST,
                 "Invalid color format. Expected HSL format: 'H S% L%'",

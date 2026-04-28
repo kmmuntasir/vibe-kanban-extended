@@ -45,8 +45,8 @@ use worktree_manager::WorktreeManager;
 use crate::{container::LocalContainerService, pty::PtyService};
 mod command;
 pub mod container;
-mod first_boot;
 mod copy;
+mod first_boot;
 pub mod pty;
 
 #[derive(Clone)]

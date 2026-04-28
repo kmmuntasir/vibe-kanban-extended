@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT ia.id as \"id!: Uuid\",\n                      ia.issue_id as \"issue_id!: Uuid\",\n                      ia.user_id as \"user_id!: Uuid\",\n                      ia.assigned_at as \"assigned_at!: DateTime<Utc>\"\n               FROM issue_assignees ia\n               JOIN issues i ON i.id = ia.issue_id\n               WHERE i.project_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "issue_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "user_id!: Uuid",
+        "ordinal": 2,
+        "type_info": "Blob"
+      },
+      {
+        "name": "assigned_at!: DateTime<Utc>",
+        "ordinal": 3,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e9342667dcb4ef4c8252f432a0255530e724de7cf08325c20fc4542cc5f65ddc"
+}

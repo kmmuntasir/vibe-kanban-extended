@@ -46,6 +46,20 @@ impl IssueTag {
         .await
     }
 
+    pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            IssueTag,
+            r#"SELECT id as "id!: Uuid",
+                      issue_id as "issue_id!: Uuid",
+                      tag_id as "tag_id!: Uuid"
+               FROM issue_tags
+               WHERE id = $1"#,
+            id
+        )
+        .fetch_optional(pool)
+        .await
+    }
+
     pub async fn create(
         pool: &SqlitePool,
         id: Option<Uuid>,
@@ -65,24 +79,6 @@ impl IssueTag {
             tag_id
         )
         .fetch_one(pool)
-        .await
-    }
-
-    pub async fn find_by_project(
-        pool: &SqlitePool,
-        project_id: Uuid,
-    ) -> Result<Vec<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            IssueTag,
-            r#"SELECT it.id as "id!: Uuid",
-                      it.issue_id as "issue_id!: Uuid",
-                      it.tag_id as "tag_id!: Uuid"
-               FROM issue_tags it
-               JOIN issues i ON i.id = it.issue_id
-               WHERE i.project_id = $1"#,
-            project_id
-        )
-        .fetch_all(pool)
         .await
     }
 

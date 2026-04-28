@@ -1,15 +1,17 @@
 use axum::{
-    Json,
+    Json, Router,
     extract::{Path, Query, State},
     http::StatusCode,
-    routing::{delete, get, patch, post},
-    Router,
+    routing::{get, post},
 };
 use db::models::project::Project;
+use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{DeleteResponse, ErrorResponse, MutationResponse, db_error, is_valid_hsl_color, local_txid};
+use super::{
+    DeleteResponse, ErrorResponse, MutationResponse, db_error, is_valid_hsl_color, local_txid,
+};
 use crate::DeploymentImpl;
 
 #[derive(Debug, Deserialize)]
@@ -57,7 +59,12 @@ pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/", get(list_projects).post(create_project))
         .route("/bulk", post(bulk_update_projects))
-        .route("/{project_id}", get(get_project).patch(update_project).delete(delete_project))
+        .route(
+            "/{project_id}",
+            get(get_project)
+                .patch(update_project)
+                .delete(delete_project),
+        )
 }
 
 async fn list_projects(
@@ -96,25 +103,12 @@ async fn create_project(
 
     let pool = &deployment.db().pool;
 
-    let project = sqlx::query_as!(
-        Project,
-        r#"INSERT INTO projects (id, name, color, organization_id)
-           VALUES ($1, $2, $3, $4)
-           RETURNING id as "id!: Uuid",
-                     name,
-                     default_agent_working_dir,
-                     remote_project_id as "remote_project_id: Uuid",
-                     color,
-                     issue_counter as "issue_counter!: i32",
-                     organization_id as "organization_id: Uuid",
-                     created_at as "created_at!: DateTime<Utc>",
-                     updated_at as "updated_at!: DateTime<Utc>""#,
-        Uuid::new_v4(),
-        payload.name,
-        payload.color,
-        payload.organization_id,
+    let project = Project::create(
+        pool,
+        &payload.name,
+        &payload.color,
+        Some(payload.organization_id),
     )
-    .fetch_one(pool)
     .await
     .map_err(|e| db_error(e, "failed to create project"))?;
 
@@ -140,16 +134,24 @@ async fn update_project(
         .map_err(|e| db_error(e, "failed to get project"))?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "project not found"))?;
 
-    if let Some(ref color) = payload.color && !is_valid_hsl_color(color) {
+    if let Some(ref color) = payload.color
+        && !is_valid_hsl_color(color)
+    {
         return Err(ErrorResponse::new(
             StatusCode::BAD_REQUEST,
             "Invalid color format. Expected HSL format: 'H S% L%'",
         ));
     }
 
-    let project = Project::update_kanban_fields(pool, project_id, payload.name.as_deref(), payload.color.as_deref(), None)
-        .await
-        .map_err(|e| db_error(e, "failed to update project"))?;
+    let project = Project::update_kanban_fields(
+        pool,
+        project_id,
+        payload.name.as_deref(),
+        payload.color.as_deref(),
+        None,
+    )
+    .await
+    .map_err(|e| db_error(e, "failed to update project"))?;
 
     Ok(Json(MutationResponse {
         data: project,
@@ -168,8 +170,7 @@ async fn delete_project(
         .map_err(|e| db_error(e, "failed to get project"))?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "project not found"))?;
 
-    sqlx::query!("DELETE FROM projects WHERE id = $1", project_id)
-        .execute(pool)
+    Project::delete(pool, project_id)
         .await
         .map_err(|e| db_error(e, "failed to delete project"))?;
 
@@ -196,7 +197,9 @@ async fn bulk_update_projects(
             .map_err(|e| db_error(e, "failed to find project"))?
             .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "project not found"))?;
 
-        if let Some(ref color) = item.changes.color && !is_valid_hsl_color(color) {
+        if let Some(ref color) = item.changes.color
+            && !is_valid_hsl_color(color)
+        {
             return Err(ErrorResponse::new(
                 StatusCode::BAD_REQUEST,
                 "Invalid color format. Expected HSL format: 'H S% L%'",

@@ -1,13 +1,18 @@
-use axum::{Json, extract::{Query, State}, http::StatusCode, response::{IntoResponse, Response}};
+use axum::{
+    Json,
+    extract::{Query, State},
+    http::StatusCode,
+    response::{IntoResponse, Response},
+};
+use db::models::{
+    issue::Issue, issue_assignee::IssueAssignee, issue_relationship::IssueRelationship,
+    issue_tag::IssueTag, kanban_tag::KanbanTag, project::Project, project_status::ProjectStatus,
+};
+use deployment::Deployment;
 use serde::Serialize;
 use uuid::Uuid;
 
 use crate::DeploymentImpl;
-use db::models::{
-    issue::Issue, issue_assignee::IssueAssignee, issue_relationship::IssueRelationship,
-    issue_tag::IssueTag, kanban_tag::KanbanTag, project::Project,
-    project_status::ProjectStatus,
-};
 
 // ---------------------------------------------------------------------------
 // Error type — raw JSON errors, NOT ApiResponse-wrapped
@@ -21,13 +26,20 @@ pub struct ErrorResponse {
 
 impl ErrorResponse {
     pub fn new(status: StatusCode, message: impl Into<String>) -> Self {
-        Self { status, message: message.into() }
+        Self {
+            status,
+            message: message.into(),
+        }
     }
 }
 
 impl IntoResponse for ErrorResponse {
     fn into_response(self) -> Response {
-        (self.status, Json(serde_json::json!({ "error": self.message }))).into_response()
+        (
+            self.status,
+            Json(serde_json::json!({ "error": self.message })),
+        )
+            .into_response()
     }
 }
 
@@ -50,32 +62,32 @@ pub struct OrgFallbackQuery {
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Serialize)]
-struct ProjectsResponse {
+pub struct ProjectsResponse {
     projects: Vec<Project>,
 }
 
 #[derive(Debug, Serialize)]
-struct ProjectStatusesResponse {
+pub struct ProjectStatusesResponse {
     project_statuses: Vec<ProjectStatus>,
 }
 
 #[derive(Debug, Serialize)]
-struct TagsResponse {
+pub struct TagsResponse {
     tags: Vec<KanbanTag>,
 }
 
 #[derive(Debug, Serialize)]
-struct IssueAssigneesResponse {
+pub struct IssueAssigneesResponse {
     issue_assignees: Vec<IssueAssignee>,
 }
 
 #[derive(Debug, Serialize)]
-struct IssueTagsResponse {
+pub struct IssueTagsResponse {
     issue_tags: Vec<IssueTag>,
 }
 
 #[derive(Debug, Serialize)]
-struct IssueRelationshipsResponse {
+pub struct IssueRelationshipsResponse {
     issue_relationships: Vec<IssueRelationship>,
 }
 
@@ -203,5 +215,7 @@ pub async fn fallback_list_issue_relationships(
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to list issue relationships")
         })?;
 
-    Ok(Json(IssueRelationshipsResponse { issue_relationships }))
+    Ok(Json(IssueRelationshipsResponse {
+        issue_relationships,
+    }))
 }

@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqliteConnection, SqlitePool};
+use sqlx::{FromRow, SqlitePool};
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -22,35 +22,6 @@ pub struct Project {
 }
 
 impl Project {
-    pub async fn create(
-        conn: &mut SqliteConnection,
-        id: Uuid,
-        name: &str,
-        color: &str,
-        organization_id: Option<Uuid>,
-    ) -> Result<Self, sqlx::Error> {
-        sqlx::query_as!(
-            Project,
-            r#"INSERT INTO projects (id, name, color, issue_counter, organization_id)
-               VALUES ($1, $2, $3, 0, $4)
-               RETURNING id as "id!: Uuid",
-                         name,
-                         default_agent_working_dir,
-                         remote_project_id as "remote_project_id: Uuid",
-                         color,
-                         issue_counter as "issue_counter!: i32",
-                         organization_id as "organization_id: Uuid",
-                         created_at as "created_at!: DateTime<Utc>",
-                         updated_at as "updated_at!: DateTime<Utc>""#,
-            id,
-            name,
-            color,
-            organization_id
-        )
-        .fetch_one(conn)
-        .await
-    }
-
     pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             Project,
@@ -112,6 +83,42 @@ impl Project {
         )
         .fetch_all(pool)
         .await
+    }
+
+    pub async fn create(
+        pool: &SqlitePool,
+        name: &str,
+        color: &str,
+        organization_id: Option<Uuid>,
+    ) -> Result<Self, sqlx::Error> {
+        let id = Uuid::new_v4();
+        sqlx::query_as!(
+            Project,
+            r#"INSERT INTO projects (id, name, color, issue_counter, organization_id)
+               VALUES ($1, $2, $3, 0, $4)
+               RETURNING id as "id!: Uuid",
+                         name,
+                         default_agent_working_dir,
+                         remote_project_id as "remote_project_id: Uuid",
+                         color,
+                         issue_counter as "issue_counter!: i32",
+                         organization_id as "organization_id: Uuid",
+                         created_at as "created_at!: DateTime<Utc>",
+                         updated_at as "updated_at!: DateTime<Utc>""#,
+            id,
+            name,
+            color,
+            organization_id
+        )
+        .fetch_one(pool)
+        .await
+    }
+
+    pub async fn delete(pool: &SqlitePool, id: Uuid) -> Result<(), sqlx::Error> {
+        sqlx::query!("DELETE FROM projects WHERE id = $1", id)
+            .execute(pool)
+            .await?;
+        Ok(())
     }
 
     pub async fn set_remote_project_id(

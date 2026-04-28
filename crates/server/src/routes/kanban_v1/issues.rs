@@ -1,15 +1,19 @@
 use api_types::{
-    BulkUpdateIssuesRequest, BulkUpdateIssuesResponse, CreateIssueRequest, DeleteResponse,
-    Issue, IssuePriority, ListIssuesQuery, ListIssuesResponse, MutationResponse,
-    SearchIssuesRequest, UpdateIssueRequest,
+    BulkUpdateIssuesRequest, BulkUpdateIssuesResponse, CreateIssueRequest, DeleteResponse, Issue,
+    IssuePriority, ListIssuesQuery, ListIssuesResponse, MutationResponse, SearchIssuesRequest,
+    UpdateIssueRequest,
 };
 use axum::{
     Json, Router,
     extract::{Path, Query, State},
-    routing::{delete, get, patch, post},
+    routing::{get, post},
 };
 use chrono::Utc;
-use db::models::issue::{Issue as DbIssue, IssueSortField as DbSortField, SearchIssuesRequest as DbSearchRequest, SortDirection as DbSortDirection};
+use db::models::issue::{
+    Issue as DbIssue, IssueSortField as DbSortField, SearchIssuesRequest as DbSearchRequest,
+    SortDirection as DbSortDirection,
+};
+use deployment::Deployment;
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
@@ -38,10 +42,7 @@ fn to_api_issue(db: DbIssue) -> Issue {
         status_id: db.status_id,
         title: db.title,
         description: db.description,
-        priority: db
-            .priority
-            .parse::<IssuePriority>()
-            .ok(),
+        priority: db.priority.parse::<IssuePriority>().ok(),
         start_date: db.start_date,
         target_date: db.target_date,
         completed_at: db.completed_at,
@@ -56,12 +57,14 @@ fn to_api_issue(db: DbIssue) -> Issue {
 }
 
 fn priority_to_str(p: &Option<Option<IssuePriority>>) -> Option<Option<&str>> {
-    p.as_ref().map(|inner| inner.as_ref().map(|p| match p {
-        IssuePriority::Urgent => "urgent",
-        IssuePriority::High => "high",
-        IssuePriority::Medium => "medium",
-        IssuePriority::Low => "low",
-    }))
+    p.as_ref().map(|inner| {
+        inner.as_ref().map(|p| match p {
+            IssuePriority::Urgent => "urgent",
+            IssuePriority::High => "high",
+            IssuePriority::Medium => "medium",
+            IssuePriority::Low => "low",
+        })
+    })
 }
 
 fn to_db_search(req: &SearchIssuesRequest) -> DbSearchRequest {
@@ -184,7 +187,10 @@ async fn update_issue(
         id,
         request.status_id,
         request.title.as_deref(),
-        request.description.as_ref().map(|d| d.as_ref().map(|s| s.as_str())),
+        request
+            .description
+            .as_ref()
+            .map(|d| d.as_ref().map(|s| s.as_str())),
         priority_to_str(&request.priority),
         request.start_date,
         request.target_date,

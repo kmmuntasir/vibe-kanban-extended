@@ -57,12 +57,30 @@ impl KanbanTag {
         .await
     }
 
+    pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            KanbanTag,
+            r#"SELECT id as "id!: Uuid",
+                      project_id as "project_id!: Uuid",
+                      name,
+                      color,
+                      created_at as "created_at!: DateTime<Utc>",
+                      updated_at as "updated_at!: DateTime<Utc>"
+               FROM kanban_tags
+               WHERE id = $1"#,
+            id
+        )
+        .fetch_optional(pool)
+        .await
+    }
+
     pub async fn create(
         pool: &SqlitePool,
         project_id: Uuid,
         name: &str,
         color: &str,
     ) -> Result<Self, sqlx::Error> {
+        let id = Uuid::new_v4();
         sqlx::query_as!(
             KanbanTag,
             r#"INSERT INTO kanban_tags (id, project_id, name, color)
@@ -73,7 +91,7 @@ impl KanbanTag {
                          color,
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
-            Uuid::new_v4(),
+            id,
             project_id,
             name,
             color
