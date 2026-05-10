@@ -315,20 +315,11 @@ pub async fn fallback_list_users(
 }
 
 pub async fn fallback_list_user_workspaces(
-    State(deployment): State<DeploymentImpl>,
     Query(_query): Query<UserWorkspaceFallbackQuery>,
 ) -> Result<Json<serde_json::Value>, ErrorResponse> {
-    let workspaces =
-        db::models::workspace::Workspace::find_all_with_status(&deployment.db().pool, None, None)
-            .await
-            .map_err(|e| {
-                tracing::error!(?e, "failed to list workspaces (fallback)");
-                ErrorResponse::new(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "failed to list workspaces",
-                )
-            })?;
-    Ok(Json(serde_json::json!({ "workspaces": workspaces })))
+    // Return empty list — workspace shape sync in local mode doesn't need
+    // real data; the workspace list is loaded via /api/workspaces endpoints.
+    Ok(Json(serde_json::json!({ "workspaces": [] })))
 }
 
 pub async fn fallback_list_project_workspaces(
