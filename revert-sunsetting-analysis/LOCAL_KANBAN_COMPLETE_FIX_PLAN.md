@@ -249,8 +249,8 @@ Comment CRUD is needed for full kanban functionality. Frontend uses Electric sha
 
 ```rust
 use api_types::{
-    CreateIssueCommentRequest, DeleteResponse, IssueComment,
-    ListIssueCommentsQuery, ListIssueCommentsResponse, MutationResponse,
+    CreateIssueCommentRequest, IssueComment,
+    ListIssueCommentsQuery, ListIssueCommentsResponse,
     UpdateIssueCommentRequest,
 };
 use axum::{
@@ -264,8 +264,7 @@ use deployment::Deployment;
 use uuid::Uuid;
 
 use crate::DeploymentImpl;
-use super::{local_txid, db_error};
-use super::shape_fallbacks::ErrorResponse;
+use super::{DeleteResponse, ErrorResponse, MutationResponse, db_error, local_txid};
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
@@ -315,7 +314,7 @@ async fn get_issue_comment(
                   message,
                   created_at as "created_at!: DateTime<Utc>",
                   updated_at as "updated_at!: DateTime<Utc>"
-           FROM issue_comments WHERE id = ?"#,
+           FROM issue_comments WHERE id = $1"#,
         id
     )
     .fetch_optional(pool)
@@ -361,7 +360,7 @@ async fn update_issue_comment(
                   message,
                   created_at as "created_at!: DateTime<Utc>",
                   updated_at as "updated_at!: DateTime<Utc>"
-           FROM issue_comments WHERE id = ?"#,
+           FROM issue_comments WHERE id = $1"#,
         id
     )
     .fetch_optional(pool)
@@ -369,19 +368,10 @@ async fn update_issue_comment(
     .map_err(|e| db_error(e, "failed to find issue comment"))?
     .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "comment not found"))?;
 
-    // Update message if provided
-    let updated = if let Some(msg) = &body.message {
-        DbComment::update(pool, id, msg)
-            .await
-            .map_err(|e| db_error(e, "failed to update issue comment"))?
-    } else {
-        comment.clone()
-    };
-
-    // Update parent_id if provided (raw SQL since DB model doesn't expose this)
+    // Update parent_id first if provided (raw SQL since DB model doesn't expose this)
     if let Some(parent_id) = &body.parent_id {
         sqlx::query!(
-            "UPDATE issue_comments SET parent_id = ?, updated_at = datetime('now', 'subsec') WHERE id = ?",
+            "UPDATE issue_comments SET parent_id = $1, updated_at = datetime('now', 'subsec') WHERE id = $2",
             parent_id,
             id
         )
@@ -390,15 +380,41 @@ async fn update_issue_comment(
         .map_err(|e| db_error(e, "failed to update comment parent_id"))?;
     }
 
+    // Update message if provided — DbComment::update() returns freshest row via RETURNING
+    let updated = if let Some(msg) = &body.message {
+        DbComment::update(pool, id, msg)
+            .await
+            .map_err(|e| db_error(e, "failed to update issue comment"))?
+    } else {
+        comment.clone()
+    };
+
+    // Build response: prefer body values, fall back to DB state
+    let final_parent_id = body.parent_id.unwrap_or(updated.parent_id);
+    let final_message = body.message.unwrap_or(updated.message);
+
+    // If only parent_id changed (no message update), re-fetch for accurate updated_at
+    let final_updated_at = if body.parent_id.is_some() && body.message.is_none() {
+        sqlx::query_scalar!(
+            r#"SELECT updated_at as "updated_at!: DateTime<Utc>" FROM issue_comments WHERE id = $1"#,
+            id
+        )
+        .fetch_one(pool)
+        .await
+        .map_err(|e| db_error(e, "failed to re-fetch updated_at"))?
+    } else {
+        updated.updated_at
+    };
+
     Ok(Json(MutationResponse {
         data: IssueComment {
             id: updated.id,
             issue_id: updated.issue_id,
             author_id: updated.author_id,
-            parent_id: body.parent_id.unwrap_or(updated.parent_id),
-            message: body.message.unwrap_or(updated.message),
+            parent_id: final_parent_id,
+            message: final_message,
             created_at: updated.created_at,
-            updated_at: updated.updated_at,
+            updated_at: final_updated_at,
         },
         txid: local_txid(),
     }))
@@ -567,7 +583,7 @@ After build + run:
 | `crates/server/src/routes/kanban_v1/shape_fallbacks.rs` | Edit | Add fallback_list_issue_comments |
 | `crates/server/src/routes/kanban_v1/mod.rs` | Edit | Add 2 modules + 3 routes |
 
-### Corrections Applied (2026-05-10 verification)
+### Corrections Applied (2026-05-10 verification — Round 1)
 
 | Issue | Fix |
 |-------|-----|
@@ -575,5 +591,14 @@ After build + run:
 | Step 4b: `#[derive(Deserialize)]` — `Deserialize` not imported in shape_fallbacks.rs | Changed to `#[derive(serde::Deserialize)]` |
 | Step 2b: Description claimed SENTRY_DSN is `rustc-env` injected | Corrected: only `rerun-if-env-changed`, not injected |
 | Missing: workspace shape fallback routes | Documented in Step 5.5 as non-blocking |
+
+### Corrections Applied (2026-05-10 verification — Round 2)
+
+| Issue | Fix |
+|-------|-----|
+| Step 4a: Imports `MutationResponse`/`DeleteResponse` from `api_types` — inconsistent with 6/7 existing kanban_v1 routes that use `super::{...}` | Changed to `use super::{DeleteResponse, ErrorResponse, MutationResponse, db_error, local_txid};` |
+| Step 4a: Raw SQL uses `?` placeholders — existing codebase uses `$1`, `$2` style | Changed all `?` to `$1`/`$2` |
+| Step 4a: `update_issue_comment` returns stale `updated_at` when both message + parent_id updated — message update runs first, parent_id raw SQL runs second, response uses first timestamp | Reordered: parent_id update first, message update second (RETURNING gives freshest state). Added re-fetch for updated_at when only parent_id changed |
+| KANBAN_PATH_PREFIXES: verified both `/v1/organizations` and `/v1/issue_comments` present | No fix needed — confirmed frontend routes correctly in local mode |
 
 **8 files edited, 2 new files created, 2 build.rs simplified.**
