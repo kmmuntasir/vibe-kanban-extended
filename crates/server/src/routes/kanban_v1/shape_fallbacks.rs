@@ -156,32 +156,19 @@ pub async fn fallback_list_issues(
     Query(query): Query<ProjectFallbackQuery>,
 ) -> Result<Json<db::models::issue::ListIssuesResponse>, ErrorResponse> {
     let pool = &deployment.db().pool;
-    let response = Issue::search(
-        pool,
-        &db::models::issue::SearchIssuesRequest {
-            project_id: query.project_id,
-            status_id: None,
-            status_ids: None,
-            priority: None,
-            parent_issue_id: None,
-            search: None,
-            simple_id: None,
-            assignee_user_id: None,
-            tag_id: None,
-            tag_ids: None,
-            sort_field: None,
-            sort_direction: None,
-            limit: None,
-            offset: None,
-        },
-    )
-    .await
-    .map_err(|e| {
-        tracing::error!(?e, project_id = %query.project_id, "failed to list issues (fallback)");
-        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to list issues")
-    })?;
-
-    Ok(Json(response))
+    let issues = Issue::find_by_project(pool, query.project_id)
+        .await
+        .map_err(|e| {
+            tracing::error!(?e, project_id = %query.project_id, "failed to list issues (fallback)");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to list issues")
+        })?;
+    let total_count = issues.len();
+    Ok(Json(db::models::issue::ListIssuesResponse {
+        issues,
+        total_count,
+        limit: total_count,
+        offset: 0,
+    }))
 }
 
 pub async fn fallback_list_issue_assignees(

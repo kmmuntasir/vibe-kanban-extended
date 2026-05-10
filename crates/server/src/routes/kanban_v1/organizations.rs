@@ -1,13 +1,26 @@
 use api_types::{ListOrganizationsResponse, MemberRole, OrganizationWithRole};
-use axum::{Json, Router, extract::State, routing::get};
+use axum::{
+    Json, Router,
+    extract::{Path, State},
+    routing::get,
+};
 use db::models::organization::Organization;
 use deployment::Deployment;
+use uuid::Uuid;
 
 use super::shape_fallbacks::ErrorResponse;
 use crate::DeploymentImpl;
 
 pub fn router() -> Router<DeploymentImpl> {
-    Router::new().route("/", get(list_organizations))
+    Router::new()
+        .route("/", get(list_organizations))
+        .route("/{id}/members", get(list_organization_members))
+}
+
+pub async fn list_organization_members(
+    Path(_id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, ErrorResponse> {
+    Ok(Json(serde_json::json!({ "members": [] })))
 }
 
 pub async fn list_organizations(
