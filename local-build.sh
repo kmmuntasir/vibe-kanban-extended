@@ -43,11 +43,12 @@ echo "🔍 Detected platform: $PLATFORM"
 echo "🔧 Using target directory: $CARGO_TARGET_DIR"
 
 # Set API base URL for remote features.
-# For a fully local build (no cloud API), leave these empty:
-#   VK_SHARED_API_BASE="" VITE_VK_SHARED_API_BASE="" ./local-build.sh
-# Defaults below point to the cloud API for release builds.
-export VK_SHARED_API_BASE="${VK_SHARED_API_BASE:-https://api.vibekanban.com}"
-export VITE_VK_SHARED_API_BASE="${VITE_VK_SHARED_API_BASE:-https://api.vibekanban.com}"
+# Defaults to empty — frontend is embedded in the binary, so API calls are
+# same-origin (relative paths) and need no remote URL.
+# For cloud-connected release builds, set these explicitly:
+#   VK_SHARED_API_BASE="https://api.vibekanban.com" VITE_VK_SHARED_API_BASE="https://api.vibekanban.com" ./local-build.sh
+export VK_SHARED_API_BASE="${VK_SHARED_API_BASE:-}"
+export VITE_VK_SHARED_API_BASE="${VITE_VK_SHARED_API_BASE:-}"
 
 echo "🧹 Cleaning previous builds..."
 rm -rf npx-cli/dist
