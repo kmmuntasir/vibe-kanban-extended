@@ -55,6 +55,7 @@ const KANBAN_PATH_PREFIXES = [
   '/v1/issue_tags',
   '/v1/issue_comments',
   '/v1/workspaces',
+  '/v1/fallback',  // catches all fallback shape sync paths
 ];
 
 function isLocalMode(): boolean {
