@@ -18,7 +18,11 @@ use services::services::{
 };
 use sha2::{Digest, Sha256};
 use ts_rs::TS;
-use utils::{assets::config_path, jwt::extract_expiration, response::ApiResponse};
+use utils::{
+    assets::config_path,
+    jwt::{create_synthetic_token, extract_expiration},
+    response::ApiResponse,
+};
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError, runtime::relay_registration};
@@ -94,7 +98,15 @@ pub fn router() -> Router<DeploymentImpl> {
 async fn auth_methods(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<AuthMethodsResponse>>, ApiError> {
-    let client = deployment.remote_client()?;
+    let client = match deployment.remote_client() {
+        Ok(c) => c,
+        Err(_) => {
+            return Ok(ResponseJson(ApiResponse::success(AuthMethodsResponse {
+                local_auth_enabled: true,
+                oauth_providers: vec![],
+            })));
+        }
+    };
     let methods = client.auth_methods().await?;
     Ok(ResponseJson(ApiResponse::success(methods)))
 }
@@ -282,7 +294,18 @@ async fn status(
 async fn get_token(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<TokenResponse>>, ApiError> {
-    let remote_client = deployment.remote_client()?;
+    // Local mode: return synthetic token for hardcoded local user
+    let remote_client = match deployment.remote_client() {
+        Ok(c) => c,
+        Err(_) => {
+            let token = create_synthetic_token("00000000-0000-0000-0000-000000000001")
+                .map_err(|e| ApiError::BadGateway(e.to_string()))?;
+            return Ok(ResponseJson(ApiResponse::success(TokenResponse {
+                access_token: token,
+                expires_at: None,
+            })));
+        }
+    };
 
     // This will auto-refresh the token if expired
     let access_token = remote_client.access_token().await.map_err(ApiError::from)?;
@@ -299,7 +322,15 @@ async fn get_token(
 async fn get_current_user(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<CurrentUserResponse>>, ApiError> {
-    let remote_client = deployment.remote_client()?;
+    // Local mode: return hardcoded local user
+    let remote_client = match deployment.remote_client() {
+        Ok(c) => c,
+        Err(_) => {
+            return Ok(ResponseJson(ApiResponse::success(CurrentUserResponse {
+                user_id: "00000000-0000-0000-0000-000000000001".to_string(),
+            })));
+        }
+    };
 
     // Get the access token from remote client
     let access_token = remote_client.access_token().await.map_err(ApiError::from)?;
