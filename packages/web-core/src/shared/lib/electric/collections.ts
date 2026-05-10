@@ -2,7 +2,11 @@ import { electricCollectionOptions } from '@tanstack/electric-db-collection';
 import { createCollection } from '@tanstack/react-db';
 
 import { getAuthRuntime } from '@/shared/lib/auth/runtime';
-import { getRemoteApiUrl, isLocalMode, makeRequest } from '@/shared/lib/remoteApi';
+import {
+  getRemoteApiUrl,
+  isLocalMode,
+  makeRequest,
+} from '@/shared/lib/remoteApi';
 import type { MutationDefinition, ShapeDefinition } from 'shared/remote-types';
 import type { CollectionConfig, SyncError } from '@/shared/lib/electric/types';
 
@@ -241,11 +245,13 @@ function invalidateFallbackCache(sourceKey: string): void {
   fallbackSnapshotCache.delete(sourceKey);
 }
 
-function refreshFallbackSource(sourceKey: string): void {
+async function refreshFallbackSource(sourceKey: string): Promise<void> {
   const runtime = getOrCreateSourceRuntime(sourceKey);
+  const promises: Promise<void>[] = [];
   for (const refresher of runtime.refreshers) {
-    void refresher();
+    promises.push(refresher());
   }
+  await Promise.all(promises);
 }
 
 function isAbortError(error: unknown): boolean {
@@ -448,9 +454,11 @@ function createFallbackSync(args: {
 
     let isCleanedUp = false;
     let refreshPromise: Promise<void> | null = null;
+    let pendingRefresh = false;
 
     const refreshNow = async () => {
       if (refreshPromise) {
+        pendingRefresh = true;
         return refreshPromise;
       }
 
@@ -488,6 +496,10 @@ function createFallbackSync(args: {
           }
         } finally {
           refreshPromise = null;
+          if (pendingRefresh) {
+            pendingRefresh = false;
+            void refreshNow();
+          }
         }
       })();
 
@@ -613,10 +625,12 @@ function isSourceFallbackLocked(sourceKey: string): boolean {
   return runtime.fallbackLocked;
 }
 
-function maybeRefreshFallbackAfterMutation(sourceKey: string): void {
+async function maybeRefreshFallbackAfterMutation(
+  sourceKey: string
+): Promise<void> {
   if (!isSourceFallbackLocked(sourceKey)) return;
   invalidateFallbackCache(sourceKey);
-  refreshFallbackSource(sourceKey);
+  await refreshFallbackSource(sourceKey);
 }
 
 function buildMutationHandlers(
@@ -648,7 +662,7 @@ function buildMutationHandlers(
         })
       );
 
-      maybeRefreshFallbackAfterMutation(sourceKey);
+      await maybeRefreshFallbackAfterMutation(sourceKey);
 
       if (isSourceFallbackLocked(sourceKey)) {
         return;
@@ -715,7 +729,7 @@ function buildMutationHandlers(
         txids = [result.txid];
       }
 
-      maybeRefreshFallbackAfterMutation(sourceKey);
+      await maybeRefreshFallbackAfterMutation(sourceKey);
 
       if (isSourceFallbackLocked(sourceKey)) {
         return;
@@ -749,7 +763,7 @@ function buildMutationHandlers(
         })
       );
 
-      maybeRefreshFallbackAfterMutation(sourceKey);
+      await maybeRefreshFallbackAfterMutation(sourceKey);
 
       if (isSourceFallbackLocked(sourceKey)) {
         return;

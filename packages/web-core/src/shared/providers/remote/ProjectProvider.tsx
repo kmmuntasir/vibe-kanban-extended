@@ -248,6 +248,7 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
       // Issue mutations
       insertIssue: issuesResult.insert,
       updateIssue: issuesResult.update,
+      updateManyIssue: issuesResult.updateMany,
       removeIssue: issuesResult.remove,
 
       // Status mutations

@@ -43,7 +43,6 @@ import { OAuthDialog } from '@/shared/dialogs/global/OAuthDialog';
 import { CreateRemoteProjectDialog } from '@/shared/dialogs/org/CreateRemoteProjectDialog';
 import { DeleteRemoteProjectDialog } from '@/shared/dialogs/org/DeleteRemoteProjectDialog';
 import { useShape } from '@/shared/integrations/electric/hooks';
-import { bulkUpdateProjectStatuses } from '@/shared/lib/remoteApi';
 
 import {
   PROJECTS_SHAPE,
@@ -434,7 +433,7 @@ export function RemoteProjectsSettingsSection({
   const {
     data: projectStatuses,
     insert: insertProjectStatus,
-    update: updateProjectStatus,
+    updateMany: updateManyProjectStatuses,
     remove: removeProjectStatus,
   } = useShape(PROJECT_PROJECT_STATUSES_SHAPE, projectParams, {
     enabled: !!selectedProjectId,
@@ -809,14 +808,8 @@ export function RemoteProjectsSettingsSection({
       bulkUpdates.push({ id: local.id, changes });
     }
 
-    if (bulkUpdates.length > 1) {
-      await bulkUpdateProjectStatuses(bulkUpdates);
-    } else if (bulkUpdates.length === 1) {
-      const result = updateProjectStatus(
-        bulkUpdates[0].id,
-        bulkUpdates[0].changes
-      );
-      mutationPromises.push(result.persisted);
+    if (bulkUpdates.length > 0) {
+      mutationPromises.push(updateManyProjectStatuses(bulkUpdates).persisted);
     }
 
     await Promise.all(mutationPromises);
@@ -826,7 +819,7 @@ export function RemoteProjectsSettingsSection({
     selectedProjectId,
     removeProjectStatus,
     insertProjectStatus,
-    updateProjectStatus,
+    updateManyProjectStatuses,
   ]);
 
   // Handlers

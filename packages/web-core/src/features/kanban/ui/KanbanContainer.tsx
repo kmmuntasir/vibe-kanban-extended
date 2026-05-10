@@ -28,10 +28,7 @@ import {
   useKanbanFilters,
   PRIORITY_ORDER,
 } from '../model/hooks/useKanbanFilters';
-import {
-  bulkUpdateIssues,
-  type BulkUpdateIssueItem,
-} from '@/shared/lib/remoteApi';
+import { type BulkUpdateIssueItem } from '@/shared/lib/remoteApi';
 import { PlusIcon, DotsThreeIcon } from '@phosphor-icons/react';
 import { Actions } from '@/shared/actions';
 import {
@@ -146,6 +143,7 @@ export function KanbanContainer() {
     insertIssueTag,
     removeIssueTag,
     insertTag,
+    updateManyIssue,
     pullRequests,
     isLoading: projectLoading,
   } = useProjectContext();
@@ -733,14 +731,14 @@ export function KanbanContainer() {
         });
       }
 
-      // Perform bulk update
+      // Perform bulk update through collection mutation system so
+      // fallback refresh is triggered and awaited properly.
       isSyncingRef.current = true;
-      bulkUpdateIssues(updates)
-        .catch((err) => {
+      updateManyIssue(updates)
+        .persisted.catch((err) => {
           console.error('Failed to bulk update sort order:', err);
         })
         .finally(() => {
-          // Delay clearing flag to let Electric sync complete
           setTimeout(() => {
             isSyncingRef.current = false;
           }, 500);
