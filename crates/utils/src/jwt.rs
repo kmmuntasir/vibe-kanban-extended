@@ -1,8 +1,6 @@
 use chrono::{DateTime, Utc};
-use jsonwebtoken::dangerous::insecure_decode;
-use jsonwebtoken::EncodingKey;
-use serde::Deserialize;
-use serde::Serialize;
+use jsonwebtoken::{EncodingKey, dangerous::insecure_decode};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 

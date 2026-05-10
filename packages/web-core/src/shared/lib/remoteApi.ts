@@ -27,7 +27,14 @@ let _remoteApiBase: string = BUILD_TIME_API_BASE;
  * No-op if base is null/undefined/empty (preserves build-time fallback).
  */
 export function setRemoteApiBase(base: string | null | undefined) {
-  _remoteApiBase = base || BUILD_TIME_API_BASE;
+  if (base === null) {
+    // Server explicitly sent null — no remote API configured.
+    _remoteApiBase = '';
+  } else if (base) {
+    _remoteApiBase = base;
+  }
+  // If undefined, keep current value (query not resolved yet).
+
   if (_remoteApiBase) {
     syncRelayApiBaseWithRemote(_remoteApiBase);
   }
@@ -55,7 +62,8 @@ const KANBAN_PATH_PREFIXES = [
   '/v1/issue_tags',
   '/v1/issue_comments',
   '/v1/workspaces',
-  '/v1/fallback',  // catches all fallback shape sync paths
+  '/v1/hosts',
+  '/v1/fallback', // catches all fallback shape sync paths
 ];
 
 function isLocalMode(): boolean {

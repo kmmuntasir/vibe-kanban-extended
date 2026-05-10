@@ -9,13 +9,24 @@ pub mod projects;
 pub mod shape_fallbacks;
 pub mod tags;
 
-use axum::{Router, http::StatusCode, routing::get};
+use axum::{Router, http::StatusCode, response::Json as ResponseJson, routing::get};
+use serde::Serialize;
 use shape_fallbacks::*;
 
 use crate::DeploymentImpl;
 
+#[derive(Debug, Serialize)]
+struct ListHostsResponse {
+    hosts: Vec<String>,
+}
+
+async fn list_hosts() -> ResponseJson<ListHostsResponse> {
+    ResponseJson(ListHostsResponse { hosts: vec![] })
+}
+
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
+        .route("/hosts", get(list_hosts))
         .route("/fallback/projects", get(fallback_list_projects))
         .route(
             "/fallback/project_statuses",
