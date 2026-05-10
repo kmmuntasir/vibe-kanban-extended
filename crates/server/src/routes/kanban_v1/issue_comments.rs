@@ -17,10 +17,7 @@ use crate::DeploymentImpl;
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
-        .route(
-            "/",
-            get(list_issue_comments).post(create_issue_comment),
-        )
+        .route("/", get(list_issue_comments).post(create_issue_comment))
         .route(
             "/{id}",
             get(get_issue_comment)
