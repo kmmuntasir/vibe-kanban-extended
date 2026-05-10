@@ -260,3 +260,49 @@ pub async fn fallback_list_issue_comments(
         issue_comments: api_comments,
     }))
 }
+
+// ---------------------------------------------------------------------------
+// Fallback handlers for shapes that have no local DB table.
+// Return empty lists so the frontend doesn't get HTML fallback errors.
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub struct UserFallbackQuery {
+    user_id: Uuid,
+}
+
+pub async fn fallback_list_notifications(
+    Query(_query): Query<UserFallbackQuery>,
+) -> Result<Json<serde_json::Value>, ErrorResponse> {
+    Ok(Json(serde_json::json!({ "notifications": [] })))
+}
+
+pub async fn fallback_list_organization_members(
+    Query(_query): Query<OrgFallbackQuery>,
+) -> Result<Json<serde_json::Value>, ErrorResponse> {
+    Ok(Json(serde_json::json!({ "organization_members": [] })))
+}
+
+pub async fn fallback_list_users(
+    Query(_query): Query<OrgFallbackQuery>,
+) -> Result<Json<serde_json::Value>, ErrorResponse> {
+    Ok(Json(serde_json::json!({ "users": [] })))
+}
+
+pub async fn fallback_list_user_workspaces(
+    State(deployment): State<DeploymentImpl>,
+    Query(_query): Query<UserFallbackQuery>,
+) -> Result<Json<serde_json::Value>, ErrorResponse> {
+    let workspaces =
+        db::models::workspace::Workspace::find_all_with_status(&deployment.db().pool, None, None)
+            .await
+            .map_err(|e| {
+                tracing::error!(?e, "failed to list workspaces (fallback)");
+                ErrorResponse::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "failed to list workspaces",
+                )
+            })?;
+    Ok(Json(serde_json::json!({ "workspaces": workspaces })))
+}

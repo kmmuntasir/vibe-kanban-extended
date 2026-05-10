@@ -66,7 +66,7 @@ const KANBAN_PATH_PREFIXES = [
   '/v1/fallback', // catches all fallback shape sync paths
 ];
 
-function isLocalMode(): boolean {
+export function isLocalMode(): boolean {
   return !getRemoteApiUrl();
 }
 

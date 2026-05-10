@@ -2,7 +2,7 @@ import { electricCollectionOptions } from '@tanstack/electric-db-collection';
 import { createCollection } from '@tanstack/react-db';
 
 import { getAuthRuntime } from '@/shared/lib/auth/runtime';
-import { getRemoteApiUrl, makeRequest } from '@/shared/lib/remoteApi';
+import { getRemoteApiUrl, isLocalMode, makeRequest } from '@/shared/lib/remoteApi';
 import type { MutationDefinition, ShapeDefinition } from 'shared/remote-types';
 import type { CollectionConfig, SyncError } from '@/shared/lib/electric/types';
 
@@ -773,6 +773,13 @@ export function createShapeCollection<TRow extends ElectricRow>(
   const cached = collectionCache.get(collectionId);
   if (cached) {
     return cached as typeof cached & { __rowType?: TRow };
+  }
+
+  // In local mode, skip Electric shape sync entirely — use REST fallback
+  // directly. Electric fails because relative shape URLs can't be
+  // constructed as valid URL objects.
+  if (isLocalMode()) {
+    lockSourceToFallback(sourceKey);
   }
 
   const reportError = createErrorReporter(config);
