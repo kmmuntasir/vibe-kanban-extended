@@ -18,11 +18,11 @@ use crate::DeploymentImpl;
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route(
-            "/issue_comments",
+            "/",
             get(list_issue_comments).post(create_issue_comment),
         )
         .route(
-            "/issue_comments/{id}",
+            "/{id}",
             get(get_issue_comment)
                 .patch(update_issue_comment)
                 .delete(delete_issue_comment),
