@@ -1,7 +1,9 @@
 pub mod issue_assignees;
+pub mod issue_comments;
 pub mod issue_relationships;
 pub mod issue_tags;
 mod issues;
+pub mod organizations;
 pub mod project_statuses;
 pub mod projects;
 pub mod shape_fallbacks;
@@ -30,12 +32,18 @@ pub fn router() -> Router<DeploymentImpl> {
             "/fallback/issue_relationships",
             get(fallback_list_issue_relationships),
         )
+        .route(
+            "/fallback/issue_comments",
+            get(fallback_list_issue_comments),
+        )
         .nest("/projects", projects::router())
         .nest("/project_statuses", project_statuses::router())
         .nest("/tags", tags::router())
         .nest("/issue_tags", issue_tags::router())
         .nest("/issue_assignees", issue_assignees::router())
         .nest("/issue_relationships", issue_relationships::router())
+        .nest("/organizations", organizations::router())
+        .nest("/issue_comments", issue_comments::router())
         .merge(issues::router())
 }
 
