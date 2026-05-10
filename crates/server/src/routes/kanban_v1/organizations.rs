@@ -2,27 +2,25 @@ use api_types::{ListOrganizationsResponse, MemberRole, OrganizationWithRole};
 use axum::{Json, Router, extract::State, routing::get};
 use db::models::organization::Organization;
 use deployment::Deployment;
-use crate::DeploymentImpl;
+
 use super::shape_fallbacks::ErrorResponse;
+use crate::DeploymentImpl;
 
 pub fn router() -> Router<DeploymentImpl> {
-    Router::new()
-        .route("/organizations", get(list_organizations))
+    Router::new().route("/organizations", get(list_organizations))
 }
 
 pub async fn list_organizations(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<Json<ListOrganizationsResponse>, ErrorResponse> {
     let pool = &deployment.db().pool;
-    let orgs = Organization::find_all(pool)
-        .await
-        .map_err(|e| {
-            tracing::error!(?e, "failed to list organizations");
-            ErrorResponse::new(
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                "failed to list organizations",
-            )
-        })?;
+    let orgs = Organization::find_all(pool).await.map_err(|e| {
+        tracing::error!(?e, "failed to list organizations");
+        ErrorResponse::new(
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            "failed to list organizations",
+        )
+    })?;
 
     let organizations: Vec<OrganizationWithRole> = orgs
         .into_iter()

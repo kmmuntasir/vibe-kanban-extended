@@ -89,6 +89,26 @@ impl IssueComment {
         .await
     }
 
+    pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as::<_, Self>("SELECT id, issue_id, author_id, parent_id, message, created_at, updated_at FROM issue_comments WHERE id = $1")
+            .bind(id)
+            .fetch_optional(pool)
+            .await
+    }
+
+    pub async fn update_parent_id(
+        pool: &SqlitePool,
+        id: Uuid,
+        parent_id: Option<Uuid>,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query("UPDATE issue_comments SET parent_id = $1, updated_at = datetime('now', 'subsec') WHERE id = $2")
+            .bind(parent_id)
+            .bind(id)
+            .execute(pool)
+            .await?;
+        Ok(())
+    }
+
     pub async fn delete(pool: &SqlitePool, id: Uuid) -> Result<(), sqlx::Error> {
         sqlx::query!("DELETE FROM issue_comments WHERE id = $1", id)
             .execute(pool)
