@@ -7,7 +7,7 @@ use super::shape_fallbacks::ErrorResponse;
 use crate::DeploymentImpl;
 
 pub fn router() -> Router<DeploymentImpl> {
-    Router::new().route("/organizations", get(list_organizations))
+    Router::new().route("/", get(list_organizations))
 }
 
 pub async fn list_organizations(
