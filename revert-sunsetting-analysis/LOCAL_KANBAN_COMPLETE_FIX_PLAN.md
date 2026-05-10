@@ -128,7 +128,7 @@ fn main() {}
 
 ### 2b. `crates/server/build.rs`
 
-**Before:** 47 lines with `rustc-env` injections for POSTHOG_API_KEY, POSTHOG_API_ENDPOINT, VK_SHARED_API_BASE, VK_SHARED_RELAY_API_BASE, SENTRY_DSN.
+**Before:** 47 lines with `rustc-env` injections for POSTHOG_API_KEY, POSTHOG_API_ENDPOINT, VK_SHARED_API_BASE, VK_SHARED_RELAY_API_BASE (SENTRY_DSN is `rerun-if-env-changed` only, not injected).
 
 **After:** Keep only the dummy `packages/local-web/dist` directory creation (lines 34-46). Remove lines 1-33 (env var loading, rerun-if-env-changed, rustc-env injections).
 
@@ -202,7 +202,7 @@ pub async fn list_organizations(
             id: org.id,
             name: org.name,
             slug: org.slug,
-            is_personal: org.is_personal == 1,
+            is_personal: org.is_personal,
             issue_prefix: org.issue_prefix,
             created_at: org.created_at,
             updated_at: org.updated_at,
@@ -421,7 +421,7 @@ async fn delete_issue_comment(
 
 Add at the bottom of the existing file:
 ```rust
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 pub struct CommentFallbackQuery {
     pub issue_id: Uuid,
 }
@@ -488,6 +488,27 @@ The first-boot seed creates "My Workspace" org with deterministic UUID. The new 
 
 ---
 
+## Step 5.5: Known Missing Routes (Non-Blocking)
+
+These routes are referenced by the frontend but NOT implemented in kanban_v1. They will 404 in local mode. Basic kanban functionality does NOT depend on them:
+
+| Route | Frontend Use | Impact |
+|-------|-------------|--------|
+| `/v1/workspaces` (CRUD) | KANBAN_PATH_PREFIXES | Workspaces have separate routes at `/api/workspaces` level — NOT blocked |
+| `/v1/fallback/user_workspaces` | USER_WORKSPACES_SHAPE | Shape sync for workspaces fails, but workspace UI uses `/api/workspaces` directly |
+| `/v1/fallback/project_workspaces` | PROJECT_WORKSPACES_SHAPE | Same as above |
+| `/v1/fallback/notifications` | NOTIFICATIONS_SHAPE | No notification feature in local mode |
+| `/v1/fallback/organization_members` | ORGANIZATION_MEMBERS_SHAPE | Single-user local, no members to sync |
+| `/v1/fallback/users` | USERS_SHAPE | Single local user, no sync needed |
+| `/v1/fallback/issue_followers` | Not in KANBAN_PATH_PREFIXES | Following not critical for kanban |
+| `/v1/fallback/issue_comment_reactions` | Not in KANBAN_PATH_PREFIXES | Reactions not critical for kanban |
+| `/v1/fallback/pull_requests` | Not in KANBAN_PATH_PREFIXES | PR linking not applicable locally |
+| `/v1/fallback/pull_request_issues` | Not in KANBAN_PATH_PREFIXES | Same as above |
+
+**Recommendation:** Add workspace fallback routes if workspace data needs to appear in the kanban sidebar. Other routes can be deferred.
+
+---
+
 ## Step 6: Wipe Local DB + Build
 
 Delete local DB to get fresh seed with the new code:
@@ -519,6 +540,7 @@ After build + run:
 - [ ] `/api/info` returns `shared_api_base: null`
 - [ ] `/api/info` returns `login_status.status: "loggedin"` (auto-local-user)
 - [ ] `curl localhost:BACKEND_PORT/api/remote/v1/organizations` returns `{ "organizations": [{ ... "name": "My Workspace" ... }] }`
+- [ ] `curl localhost:BACKEND_PORT/api/remote/v1/organizations` — `is_personal` field is boolean (not integer)
 - [ ] Kanban board renders (no sign-in prompt, no sunset page)
 - [ ] Sidebar shows "My Workspace" org and "Main Project"
 - [ ] Can create issue → gets VK-1 simple_id
@@ -526,6 +548,8 @@ After build + run:
 - [ ] Can add comments
 - [ ] Data persists across app restart
 - [ ] No connection to api.vibekanban.com (verify with `lsof -i TCP -P | grep vibe-kanb`)
+- [ ] Browser console: no 404s for `/v1/organizations` or `/v1/issue_comments`
+- [ ] Browser console: expected 404s for `/v1/fallback/user_workspaces` etc. (non-blocking, see Step 5.5)
 
 ---
 
@@ -535,12 +559,21 @@ After build + run:
 |------|--------|-------------|
 | `crates/local-deployment/src/lib.rs` | Edit L176-181 | Remove option_env! fallbacks |
 | `crates/local-deployment/build.rs` | Simplify | Remove env injection, keep empty main |
-| `crates/server/build.rs` | Edit L1-33 | Remove env injection, keep dist dir creation |
+| `crates/server/build.rs` | Edit L1-33 | Remove env injection, keep dist dir creation (with cargo:warning) |
 | `crates/services/src/services/analytics.rs` | Edit L24-29 | Remove option_env! |
 | `crates/utils/src/sentry.rs` | Edit L27-34 | Remove option_env! |
 | `crates/server/src/routes/kanban_v1/organizations.rs` | **NEW** | GET /organizations handler |
 | `crates/server/src/routes/kanban_v1/issue_comments.rs` | **NEW** | Comment CRUD handlers |
 | `crates/server/src/routes/kanban_v1/shape_fallbacks.rs` | Edit | Add fallback_list_issue_comments |
 | `crates/server/src/routes/kanban_v1/mod.rs` | Edit | Add 2 modules + 3 routes |
+
+### Corrections Applied (2026-05-10 verification)
+
+| Issue | Fix |
+|-------|-----|
+| Step 3: `is_personal: org.is_personal == 1` won't compile — DB model has `bool`, not `i32` | Changed to `is_personal: org.is_personal` |
+| Step 4b: `#[derive(Deserialize)]` — `Deserialize` not imported in shape_fallbacks.rs | Changed to `#[derive(serde::Deserialize)]` |
+| Step 2b: Description claimed SENTRY_DSN is `rustc-env` injected | Corrected: only `rerun-if-env-changed`, not injected |
+| Missing: workspace shape fallback routes | Documented in Step 5.5 as non-blocking |
 
 **8 files edited, 2 new files created, 2 build.rs simplified.**
