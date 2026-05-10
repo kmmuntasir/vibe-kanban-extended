@@ -52,7 +52,10 @@ pub async fn pair_relay_host(
 pub async fn list_relay_paired_hosts(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<ListRelayPairedHostsResponse>>, ApiError> {
-    let hosts = deployment.relay_hosts()?.list_hosts().await;
+    let hosts = match deployment.relay_hosts() {
+        Ok(relay) => relay.list_hosts().await,
+        Err(_) => vec![],
+    };
     Ok(ResponseJson(ApiResponse::success(
         ListRelayPairedHostsResponse { hosts },
     )))
