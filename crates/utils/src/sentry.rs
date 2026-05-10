@@ -25,12 +25,8 @@ impl SentrySource {
 
     fn dsn(self) -> Option<String> {
         let value = match self {
-            SentrySource::Remote => option_env!("SENTRY_DSN_REMOTE")
-                .map(|s| s.to_string())
-                .or_else(|| std::env::var("SENTRY_DSN_REMOTE").ok()),
-            _ => option_env!("SENTRY_DSN")
-                .map(|s| s.to_string())
-                .or_else(|| std::env::var("SENTRY_DSN").ok()),
+            SentrySource::Remote => std::env::var("SENTRY_DSN_REMOTE").ok(),
+            _ => std::env::var("SENTRY_DSN").ok(),
         };
         value.filter(|s| !s.is_empty())
     }
