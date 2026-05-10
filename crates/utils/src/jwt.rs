@@ -1,6 +1,8 @@
 use chrono::{DateTime, Utc};
 use jsonwebtoken::dangerous::insecure_decode;
+use jsonwebtoken::EncodingKey;
 use serde::Deserialize;
+use serde::Serialize;
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -40,4 +42,28 @@ pub fn extract_subject(token: &str) -> Result<Uuid, TokenClaimsError> {
     let data = insecure_decode::<SubClaim>(token)?;
     let sub = data.claims.sub.ok_or(TokenClaimsError::MissingSubject)?;
     Uuid::parse_str(&sub).map_err(|_| TokenClaimsError::InvalidSubject(sub))
+}
+
+#[derive(Debug, Serialize)]
+struct SyntheticClaims {
+    sub: String,
+    exp: usize,
+    iat: usize,
+}
+
+/// Create a synthetic JWT for local development mode.
+/// The token is NOT cryptographically validated anywhere —
+/// HS256 with a static dev secret is sufficient.
+pub fn create_synthetic_token(user_id: &str) -> Result<String, jsonwebtoken::errors::Error> {
+    let now = chrono::Utc::now().timestamp() as usize;
+    let claims = SyntheticClaims {
+        sub: user_id.to_string(),
+        iat: now,
+        exp: now + 86400,
+    };
+    jsonwebtoken::encode(
+        &jsonwebtoken::Header::default(),
+        &claims,
+        &EncodingKey::from_secret(b"local-dev-no-validation"),
+    )
 }
