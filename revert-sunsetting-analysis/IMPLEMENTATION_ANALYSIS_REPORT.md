@@ -268,49 +268,150 @@ Integration tests partially written. Not the root cause of the current issue.
 
 ---
 
-## 7. What Needs to Change
+## 7. Trace: What Happens After Removing `option_env!`
 
-### Root Problem
+### Step-by-step code path analysis
 
-`option_env!("VK_SHARED_API_BASE")` in `crates/local-deployment/src/lib.rs:178` captures the build-time environment variable. If the binary is built with `VK_SHARED_API_BASE` set (as is the case for release builds), local kanban routes are unreachable.
+After removing `option_env!("VK_SHARED_API_BASE")` from line 178, leaving only `std::env::var("VK_SHARED_API_BASE").ok()`:
 
-### Fix Options
-
-**Option A: Rebuild binary without VK_SHARED_API_BASE**
-```bash
-unset VK_SHARED_API_BASE
-pnpm run build:npx
+**Server-side (startup):**
 ```
-Binary will have `option_env!("VK_SHARED_API_BASE")` = `None`. `remote_client()` fails. Auth bypass kicks in. Frontend uses local kanban routes.
+1. VK_SHARED_API_BASE not set at runtime → std::env::var → Err
+2. api_base = None
+3. remote_info.get_api_base() → None
+4. remote_client() → Err(RemoteClientNotConfigured)
+5. tracing::info!("VK_SHARED_API_BASE not set; remote features disabled")
+```
 
-**Option B: Remove `option_env!` fallback entirely**
+**Server-side (GET /api/info):**
+```
+6. get_login_status():
+   → remote_client() → Err → enters early-return block
+   → Returns LoginStatus::LoggedIn {
+       profile: ProfileResponse {
+         user_id: 00000000-0000-0000-0000-000000000001,
+         username: "local-user",
+         providers: [{ provider: "local", display_name: "Local User" }]
+       }
+     }
+7. /api/info response:
+   → shared_api_base: null
+   → login_status: { status: "loggedin", profile: {...} }
+```
+
+**Frontend:**
+```
+8. ConfigProvider.setRemoteApiBase(null) → _remoteApiBase stays ""
+9. LocalAuthProvider: loginStatus.status === 'loggedin' → isSignedIn = true
+10. isLocalMode() → !getRemoteApiUrl() → !"" → true
+```
+
+**UI flow:**
+```
+11. ProjectKanban renders:
+    → useAuth().isSignedIn → true
+    → skips <LoginRequiredPrompt> (line 305)
+    → proceeds to <OrgProvider> → <ProjectKanbanInner>
+
+12. Sidebar (SharedAppLayout):
+    → isSignedIn = true
+    → useShape(PROJECTS_SHAPE) enabled
+    → Electric sync tries, fails (no auth token)
+    → Falls back to HTTP fallback
+    → makeRequest('/v1/fallback/projects?...')
+    → isLocalMode() && isKanbanPath() → true
+    → fetch('/api/remote/v1/fallback/projects?...')
+```
+
+**BUT — GAP FOUND:**
+
+```
+13. useUserOrganizations fires:
+    → organizationsApi.getUserOrganizations()
+    → makeRemoteRequest('/v1/organizations')
+    → makeRequest('/v1/organizations')
+    → isLocalMode() && isKanbanPath() → true
+    → fetch('/api/remote/v1/organizations')
+    → kanban_v1 router: NO /organizations route defined
+    → 404 NOT FOUND ← BLOCKS THE UI
+```
+
+### Route Gap Analysis
+
+**Frontend `KANBAN_PATH_PREFIXES`** vs **`kanban_v1::router()` routes**:
+
+| Frontend calls `/v1/...` | kanban_v1 handler | Status |
+|---|---|---|
+| `organizations` | — | **MISSING** |
+| `projects` | `projects::router()` | OK |
+| `project_statuses` | `project_statuses::router()` | OK |
+| `issues` | `issues::router()` | OK |
+| `tags` | `tags::router()` | OK |
+| `issue_assignees` | `issue_assignees::router()` | OK |
+| `issue_relationships` | `issue_relationships::router()` | OK |
+| `issue_tags` | `issue_tags::router()` | OK |
+| `issue_comments` | — | **MISSING** |
+| `workspaces` | — | **MISSING** |
+
+### Answer: Can You Sign In?
+
+**No real sign-in.** After removing `option_env!`:
+- Remote client fails → OAuth sign-in is impossible (no server to authenticate against)
+- Auth bypass auto-authenticates as "local-user" — `isSignedIn = true` — no prompt shown
+- Project/kanban feature becomes accessible (no login gate)
+- But org fetch fails (404) because `/v1/organizations` route is missing from kanban_v1
+
+### Answer: Is Auth Bypass Already Implemented?
+
+**Yes.** `crates/local-deployment/src/lib.rs:410-428` implements the full auth bypass:
 ```rust
-// Change from:
+let Ok(_client) = self.remote_client() else {
+    let local_profile = ProfileResponse { ... };
+    return LoginStatus::LoggedIn { profile: Some(local_profile) };
+};
+```
+It has always been implemented (Task 10 in the plan). It was simply **unreachable** because `option_env!` made `remote_client()` succeed, taking the OAuth path instead.
+
+### What's Needed to Enable Project Feature Without Sign-In
+
+Three changes required:
+
+1. **Remove `option_env!`** (line 178) — unblocks auth bypass
+2. **Add `/v1/organizations` route to kanban_v1** — returns seeded "My Workspace" org from local SQLite
+3. **Add `/v1/issue_comments` route to kanban_v1** — for comment CRUD
+
+Optional for full functionality:
+4. `/v1/workspaces` — may work via existing local workspace routes, verify
+
+### Recommended Fix Plan
+
+**Step 1: Fix build config** — `crates/local-deployment/src/lib.rs:178`
+```rust
+// Before:
 let api_base = std::env::var("VK_SHARED_API_BASE")
     .ok()
     .or_else(|| option_env!("VK_SHARED_API_BASE").map(|s| s.to_string()));
 
-// To:
+// After:
 let api_base = std::env::var("VK_SHARED_API_BASE").ok();
 ```
-Only runtime env var configures remote. Build-time default removed.
 
-**Option C: Make frontend always use local kanban routes**
-```typescript
-// In remoteApi.ts, change makeRequest:
-if (isKanbanPath(path)) {
-  return localApiRequest(path, options);  // Always local for kanban
-}
+**Step 2: Add org route** — new file `crates/server/src/routes/kanban_v1/organizations.rs`
+```rust
+// GET /v1/organizations → query local SQLite organizations table
+// Returns the seeded "My Workspace" org (deterministic UUID v5)
 ```
-Kanban always goes through local server. Remote mode only for non-kanban features.
 
-**Option D: Make kanban routing independent of shared_api_base**
-Modify the backend to strip `shared_api_base` from `/api/info` response, forcing frontend into local mode for kanban while preserving remote for other features (workspaces, MCP).
+**Step 3: Add comment routes** — new file `crates/server/src/routes/kanban_v1/issue_comments.rs`
+```rust
+// CRUD routes for /v1/issue_comments (create, list, update, delete)
+// DB model already exists at crates/db/src/models/issue_comment.rs
+```
 
-### Recommended: Option A + Option C
-
-Short term: Rebuild without `VK_SHARED_API_BASE` to activate existing local kanban routes.
-Long term: Change frontend logic to prefer local kanban regardless of remote config, so local dev and production builds behave consistently.
+**Step 4: Rebuild**
+```bash
+pnpm run build:npx
+```
 
 ---
 
