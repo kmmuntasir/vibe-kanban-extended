@@ -22,6 +22,30 @@ cd npx-cli && node bin/cli.js
 | `pnpm run build:npx` | Full production build (web app + Rust workspace + npx-cli) |
 | `pnpm run build:npx -- --desktop` | Includes Tauri desktop app |
 
+### Local vs Cloud Builds
+
+By default, the build runs in **local mode** — the frontend is embedded in the Rust binary and all API calls use same-origin relative paths. No remote API URL is needed.
+
+To build a **cloud-connected** version that syncs with the remote API:
+
+```bash
+VK_SHARED_API_BASE="https://api.vibekanban.com" \
+VITE_VK_SHARED_API_BASE="https://api.vibekanban.com" \
+pnpm run build:npx
+```
+
+### Fixed Port
+
+By default, the server auto-assigns a free port (port `0`). To use a fixed port:
+
+```bash
+BACKEND_PORT=46609 ./vibe-kanban
+# or
+PORT=46609 ./vibe-kanban
+```
+
+The port is read from `BACKEND_PORT` first, falling back to `PORT`. This is only relevant for bookmarking the browser URL — the embedded frontend uses relative API paths, so no port configuration is needed in the build itself.
+
 The build script (`local-build.sh`) performs these steps:
 
 1. Builds the web frontend (`packages/local-web` → Vite production build)
