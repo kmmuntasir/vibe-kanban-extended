@@ -333,7 +333,7 @@ async fn create_issue_comment(
     let local_user_id = Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap();
     let comment = DbComment::create(
         pool, body.issue_id,
-        body.author_id.or(Some(local_user_id)), // use local user if no author
+        Some(local_user_id), // author_id set server-side (not in request payload)
         body.parent_id, &body.message,
     )
     .await
@@ -602,3 +602,33 @@ After build + run:
 | KANBAN_PATH_PREFIXES: verified both `/v1/organizations` and `/v1/issue_comments` present | No fix needed — confirmed frontend routes correctly in local mode |
 
 **8 files edited, 2 new files created, 2 build.rs simplified.**
+
+### Corrections Applied (2026-05-10 verification — Round 3)
+
+| Issue | Fix |
+|-------|-----|
+| Step 4a: `body.author_id` won't compile — `CreateIssueCommentRequest` has NO `author_id` field (verified `crates/api-types/src/issue_comment.rs:20-28`) | Changed `body.author_id.or(Some(local_user_id))` → `Some(local_user_id)`. In remote server, `author_id` comes from `ctx.user.id` (auth context), not request payload. Local mode hardcodes the local user UUID. |
+| Step 4a: `DbComment::create()` generates UUID internally (`let id = Uuid::new_v4()`) — `CreateIssueCommentRequest.id` is ignored | Non-blocking. Client-sent IDs enable optimistic updates for Electric sync, irrelevant in local mode. |
+| Step 4b: shape_fallbacks.rs needs `Deserialize` added to `use serde::Serialize` → `use serde::{Deserialize, Serialize}` | Fix plan already notes this. Confirmed current import is `use serde::Serialize;` at line 13. |
+
+### Verification Summary (2026-05-10 — Full Audit)
+
+| Step | Claim | Verified | Result |
+|------|-------|----------|--------|
+| 1a | `option_env!` at lib.rs:176-181 | ✅ Lines match exactly | Correct |
+| 1b | `option_env!` at analytics.rs:24-29 | ✅ Lines match exactly | Correct |
+| 1c | `option_env!` at sentry.rs:27-34 | ✅ Lines match exactly | Correct |
+| 1d | remote/analytics.rs:15-16 unchanged | ✅ Confirmed separate workspace | Correct |
+| 2a | local-deployment/build.rs ~16 lines | ⚠️ Actually 20 lines | Cosmetic |
+| 2b | server/build.rs ~47 lines | ⚠️ Actually 48 lines | Cosmetic |
+| 3a | `OrganizationWithRole` struct fields | ✅ All 8 fields verified | Correct |
+| 3a | `Organization::find_all()` exists | ✅ Returns `Vec<Organization>` | Correct |
+| 4a | `DbComment` methods exist | ✅ All 4 methods verified | Correct |
+| 4a | `DbComment` derives Clone | ✅ `#[derive(Debug, Clone, ...)]` | Correct |
+| 4a | `CreateIssueCommentRequest.author_id` | ❌ Field does NOT exist | **Fixed in Round 3** |
+| 4a | SQL `$1` placeholder style | ✅ DB model uses `$1`/`$2` | Correct |
+| 4b | shape_fallbacks.rs imports | ✅ Needs `Deserialize` + `IssueComment` | Correct (plan notes it) |
+| Route gap | 7 existing, 3 missing | ✅ Confirmed: orgs, comments, workspaces | Correct |
+| Frontend | `KANBAN_PATH_PREFIXES` includes orgs + comments | ✅ Lines 47-58 verified | Correct |
+
+**No remaining gaps. Plan is ready for implementation.**
