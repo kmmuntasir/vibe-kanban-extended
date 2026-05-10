@@ -1,0 +1,49 @@
+api.ts:264 [API Error] 
+{message: 'Remote client not configured', status: 400, response: Response, endpoint: 'http://127.0.0.1:35187/api/auth/token', timestamp: '2026-05-10T16:19:26.283Z'}
+queryClient.ts:6 [React Query Error] 
+{queryKey: Array(2), error: ApiError: Remote client not configured
+    at $t (http://127.0.0.1:35187/assets/index-Z11GC7-9.js:1…, message: 'Remote client not configured', stack: 'ApiError: Remote client not configured\n    at $t (…7.0.0.1:35187/assets/index-Z11GC7-9.js:12:200086)'}
+localApiTransport.ts:99 
+ GET http://127.0.0.1:35187/api/auth/token 400 (Bad Request)
+api.ts:264 [API Error] 
+{message: 'Remote client not configured', status: 400, response: Response, endpoint: 'http://127.0.0.1:35187/api/auth/token', timestamp: '2026-05-10T16:19:27.300Z'}
+queryClient.ts:6 [React Query Error] 
+{queryKey: Array(2), error: ApiError: Remote client not configured
+    at $t (http://127.0.0.1:35187/assets/index-Z11GC7-9.js:1…, message: 'Remote client not configured', stack: 'ApiError: Remote client not configured\n    at $t (…7.0.0.1:35187/assets/index-Z11GC7-9.js:12:200086)'}
+collections.ts:290 Shape sync error: 
+{message: 'Electric sync timed out after 3000ms, switching to fallback'}
+collections.ts:290 Shape sync error: 
+{message: 'Electric sync timed out after 3000ms, switching to fallback'}
+localApiTransport.ts:99 
+ GET http://127.0.0.1:35187/api/auth/token 400 (Bad Request)
+api.ts:264 [API Error] 
+{message: 'Remote client not configured', status: 400, response: Response, endpoint: 'http://127.0.0.1:35187/api/auth/token', timestamp: '2026-05-10T16:19:29.245Z'}
+queryClient.ts:6 [React Query Error] 
+{queryKey: Array(2), error: ApiError: Remote client not configured
+    at $t (http://127.0.0.1:35187/assets/index-Z11GC7-9.js:1…, message: 'Remote client not configured', stack: 'ApiError: Remote client not configured\n    at $t (…7.0.0.1:35187/assets/index-Z11GC7-9.js:12:200086)'}
+collections.ts:290 Shape sync error: 
+{message: 'Not authenticated'}
+collections.ts:290 Shape sync error: 
+{message: 'Not authenticated'}
+localApiTransport.ts:99 
+ GET http://127.0.0.1:35187/api/auth/token 400 (Bad Request)
+api.ts:264 [API Error] 
+{message: 'Remote client not configured', status: 400, response: Response, endpoint: 'http://127.0.0.1:35187/api/auth/token', timestamp: '2026-05-10T16:19:29.303Z'}
+queryClient.ts:6 [React Query Error] 
+{queryKey: Array(2), error: ApiError: Remote client not configured
+    at $t (http://127.0.0.1:35187/assets/index-Z11GC7-9.js:1…, message: 'Remote client not configured', stack: 'ApiError: Remote client not configured\n    at $t (…7.0.0.1:35187/assets/index-Z11GC7-9.js:12:200086)'}
+localApiTransport.ts:99 
+ GET http://127.0.0.1:35187/api/relay-auth/client/hosts 400 (Bad Request)
+api.ts:264 [API Error] 
+{message: 'Remote relay API is not configured', status: 400, response: Response, endpoint: 'http://127.0.0.1:35187/api/relay-auth/client/hosts', timestamp: '2026-05-10T16:19:30.356Z'}
+localApiTransport.ts:99 
+ GET http://127.0.0.1:35187/api/auth/token 400 (Bad Request)
+api.ts:264 [API Error] 
+{message: 'Remote client not configured', status: 400, response: Response, endpoint: 'http://127.0.0.1:35187/api/auth/token', timestamp: '2026-05-10T16:19:33.307Z'}
+queryClient.ts:6 [React Query Error] 
+{queryKey: Array(2), error: ApiError: Remote client not configured
+    at $t (http://127.0.0.1:35187/assets/index-Z11GC7-9.js:1…, message: 'Remote client not configured', stack: 'ApiError: Remote client not configured\n    at $t (…7.0.0.1:35187/assets/index-Z11GC7-9.js:12:200086)'}
+queryClient.ts:6 [React Query Error] 
+{queryKey: Array(2), error: Error: Not authenticated
+    at AJe (http://127.0.0.1:35187/assets/index-Z11GC7-9.js:12:191065)
+   …, message: 'Not authenticated', stack: 'Error: Not authenticated\n    at AJe (http://127.0.…7.0.0.1:35187/assets/index-Z11GC7-9.js:12:211179)'}
