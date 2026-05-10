@@ -26,6 +26,8 @@ pub struct ListProjectsResponse {
 
 #[derive(Debug, Deserialize)]
 pub struct CreateProjectRequest {
+    #[serde(default)]
+    pub id: Option<Uuid>,
     pub name: String,
     pub color: String,
     pub organization_id: Uuid,
@@ -105,6 +107,7 @@ async fn create_project(
 
     let project = Project::create(
         pool,
+        payload.id,
         &payload.name,
         &payload.color,
         Some(payload.organization_id),

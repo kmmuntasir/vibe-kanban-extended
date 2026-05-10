@@ -87,11 +87,12 @@ impl Project {
 
     pub async fn create(
         pool: &SqlitePool,
+        id: Option<Uuid>,
         name: &str,
         color: &str,
         organization_id: Option<Uuid>,
     ) -> Result<Self, sqlx::Error> {
-        let id = Uuid::new_v4();
+        let id = id.unwrap_or_else(Uuid::new_v4);
         sqlx::query_as!(
             Project,
             r#"INSERT INTO projects (id, name, color, issue_counter, organization_id)
