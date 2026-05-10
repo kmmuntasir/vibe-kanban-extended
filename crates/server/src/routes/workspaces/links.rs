@@ -131,6 +131,7 @@ async fn auto_move_issue_to_in_progress(
     #[derive(sqlx::FromRow)]
     struct StatusRow {
         id: Uuid,
+        #[allow(dead_code)]
         name: String,
     }
     let in_progress: Option<StatusRow> = sqlx::query_as(
