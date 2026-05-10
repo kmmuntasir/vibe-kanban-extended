@@ -5,11 +5,12 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use db::models::{
-    issue::Issue, issue_assignee::IssueAssignee, issue_relationship::IssueRelationship,
-    issue_tag::IssueTag, kanban_tag::KanbanTag, project::Project, project_status::ProjectStatus,
+    issue::Issue, issue_assignee::IssueAssignee, issue_comment::IssueComment,
+    issue_relationship::IssueRelationship, issue_tag::IssueTag, kanban_tag::KanbanTag,
+    project::Project, project_status::ProjectStatus,
 };
 use deployment::Deployment;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::DeploymentImpl;
@@ -57,6 +58,11 @@ pub struct OrgFallbackQuery {
     pub organization_id: Uuid,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct CommentFallbackQuery {
+    pub issue_id: Uuid,
+}
+
 // ---------------------------------------------------------------------------
 // Response wrappers — match the shape the frontend expects
 // ---------------------------------------------------------------------------
@@ -89,6 +95,11 @@ pub struct IssueTagsResponse {
 #[derive(Debug, Serialize)]
 pub struct IssueRelationshipsResponse {
     issue_relationships: Vec<IssueRelationship>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CommentsResponse {
+    pub issue_comments: Vec<api_types::IssueComment>,
 }
 
 // ---------------------------------------------------------------------------
@@ -217,5 +228,35 @@ pub async fn fallback_list_issue_relationships(
 
     Ok(Json(IssueRelationshipsResponse {
         issue_relationships,
+    }))
+}
+
+pub async fn fallback_list_issue_comments(
+    State(deployment): State<DeploymentImpl>,
+    Query(query): Query<CommentFallbackQuery>,
+) -> Result<Json<CommentsResponse>, ErrorResponse> {
+    let pool = &deployment.db().pool;
+    let comments = IssueComment::find_by_issue(pool, query.issue_id)
+        .await
+        .map_err(|e| {
+            tracing::error!(?e, issue_id = %query.issue_id, "failed to list issue comments (fallback)");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to list issue comments")
+        })?;
+
+    let api_comments: Vec<api_types::IssueComment> = comments
+        .into_iter()
+        .map(|c| api_types::IssueComment {
+            id: c.id,
+            issue_id: c.issue_id,
+            author_id: c.author_id,
+            parent_id: c.parent_id,
+            message: c.message,
+            created_at: c.created_at,
+            updated_at: c.updated_at,
+        })
+        .collect();
+
+    Ok(Json(CommentsResponse {
+        issue_comments: api_comments,
     }))
 }
