@@ -269,13 +269,31 @@ pub async fn fallback_list_issue_comments(
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
 pub struct UserFallbackQuery {
-    user_id: Uuid,
+    user_id: Option<Uuid>,
 }
 
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
 pub struct UserWorkspaceFallbackQuery {
-    owner_user_id: Uuid,
+    owner_user_id: Option<Uuid>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub struct OptionalOrgFallbackQuery {
+    organization_id: Option<Uuid>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub struct OptionalProjectFallbackQuery {
+    project_id: Option<Uuid>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub struct OptionalCommentFallbackQuery {
+    issue_id: Option<Uuid>,
 }
 
 pub async fn fallback_list_notifications(
@@ -285,13 +303,13 @@ pub async fn fallback_list_notifications(
 }
 
 pub async fn fallback_list_organization_members(
-    Query(_query): Query<OrgFallbackQuery>,
+    Query(_query): Query<OptionalOrgFallbackQuery>,
 ) -> Result<Json<serde_json::Value>, ErrorResponse> {
     Ok(Json(serde_json::json!({ "organization_members": [] })))
 }
 
 pub async fn fallback_list_users(
-    Query(_query): Query<OrgFallbackQuery>,
+    Query(_query): Query<OptionalOrgFallbackQuery>,
 ) -> Result<Json<serde_json::Value>, ErrorResponse> {
     Ok(Json(serde_json::json!({ "users": [] })))
 }
@@ -314,31 +332,31 @@ pub async fn fallback_list_user_workspaces(
 }
 
 pub async fn fallback_list_project_workspaces(
-    Query(_query): Query<ProjectFallbackQuery>,
+    Query(_query): Query<OptionalProjectFallbackQuery>,
 ) -> Result<Json<serde_json::Value>, ErrorResponse> {
     Ok(Json(serde_json::json!({ "workspaces": [] })))
 }
 
 pub async fn fallback_list_issue_followers(
-    Query(_query): Query<ProjectFallbackQuery>,
+    Query(_query): Query<OptionalProjectFallbackQuery>,
 ) -> Result<Json<serde_json::Value>, ErrorResponse> {
     Ok(Json(serde_json::json!({ "issue_followers": [] })))
 }
 
 pub async fn fallback_list_pull_requests(
-    Query(_query): Query<ProjectFallbackQuery>,
+    Query(_query): Query<OptionalProjectFallbackQuery>,
 ) -> Result<Json<serde_json::Value>, ErrorResponse> {
     Ok(Json(serde_json::json!({ "pull_requests": [] })))
 }
 
 pub async fn fallback_list_pull_request_issues(
-    Query(_query): Query<ProjectFallbackQuery>,
+    Query(_query): Query<OptionalProjectFallbackQuery>,
 ) -> Result<Json<serde_json::Value>, ErrorResponse> {
     Ok(Json(serde_json::json!({ "pull_request_issues": [] })))
 }
 
 pub async fn fallback_list_issue_comment_reactions(
-    Query(_query): Query<CommentFallbackQuery>,
+    Query(_query): Query<OptionalCommentFallbackQuery>,
 ) -> Result<Json<serde_json::Value>, ErrorResponse> {
     Ok(Json(serde_json::json!({ "issue_comment_reactions": [] })))
 }
