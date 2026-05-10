@@ -1,16 +1,13 @@
 ➜  vibe-kanban-extended git:(analysis/enable-local-backend-and-db) cd npx-cli && node bin/cli.js
 Starting vibe-kanban v0.1.44 (local dev)...
-2026-05-10T16:18:03.293778Z  INFO executors::profile: Loaded user profile overrides from profiles.json
-2026-05-10T16:18:03.299519Z  INFO local_deployment: Starting orphaned file cleanup...
-2026-05-10T16:18:03.299696Z  INFO local_deployment: VK_SHARED_API_BASE not set; remote features disabled
-2026-05-10T16:18:03.303847Z  INFO services::services::pr_monitor: Starting PR monitoring service with interval 60s
-2026-05-10T16:18:03.304760Z  INFO server: No PORT environment variable set, using port 0 for auto-assignment
-2026-05-10T16:18:03.305044Z  INFO server: Main server on :35187, Preview proxy on :38125
-2026-05-10T16:18:03.307232Z  INFO local_deployment::container: Starting periodic workspace cleanup...
-2026-05-10T16:18:03.309561Z  INFO local_deployment::container: Found 2 expired workspaces to clean up
-2026-05-10T16:18:03.310304Z  INFO server: Opening browser...
-2026-05-10T16:18:05.368662Z ERROR server::error: API request failed error_type="DatabaseError" status=500 Internal Server Error error=Database(RowNotFound)
-2026-05-10T16:18:05.368717Z ERROR server::middleware::error_logging: API request returned server error method=GET uri=/api/containers/attempt-context?ref=%2Fhome%2Fmunna%2Fsonic%2Flocalhost%2Fvibe-kanban-extended%2Fnpx-cli matched_path="/api/containers/attempt-context" status=500 Internal Server Error
-2026-05-10T16:18:05.382613Z  INFO utils::process: Sending SIGINT to process group
-2026-05-10T16:18:07.384984Z  INFO utils::process: Sending SIGTERM to process group
-2026-05-10T16:18:09.385151Z  INFO utils::process: Sending SIGKILL to process group
+2026-05-10T18:13:34.803107Z  INFO executors::profile: Loaded user profile overrides from profiles.json
+2026-05-10T18:13:34.808365Z  INFO local_deployment: Starting orphaned file cleanup...
+2026-05-10T18:13:34.808466Z  INFO local_deployment: VK_SHARED_API_BASE not set; remote features disabled
+2026-05-10T18:13:34.812717Z  INFO services::services::pr_monitor: Starting PR monitoring service with interval 60s
+2026-05-10T18:13:34.813871Z  INFO local_deployment::container: Starting periodic workspace cleanup...
+2026-05-10T18:13:34.815556Z  INFO server: No PORT environment variable set, using port 0 for auto-assignment
+2026-05-10T18:13:34.815707Z  INFO server: Main server on :43423, Preview proxy on :34267
+2026-05-10T18:13:34.820718Z  INFO server: Opening browser...
+2026-05-10T18:13:36.921238Z  INFO utils::process: Sending SIGINT to process group
+2026-05-10T18:13:38.921724Z  INFO utils::process: Sending SIGTERM to process group
+2026-05-10T18:13:40.923126Z  INFO utils::process: Sending SIGKILL to process group
