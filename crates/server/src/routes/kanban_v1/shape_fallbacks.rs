@@ -272,6 +272,12 @@ pub struct UserFallbackQuery {
     user_id: Uuid,
 }
 
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub struct UserWorkspaceFallbackQuery {
+    owner_user_id: Uuid,
+}
+
 pub async fn fallback_list_notifications(
     Query(_query): Query<UserFallbackQuery>,
 ) -> Result<Json<serde_json::Value>, ErrorResponse> {
@@ -292,7 +298,7 @@ pub async fn fallback_list_users(
 
 pub async fn fallback_list_user_workspaces(
     State(deployment): State<DeploymentImpl>,
-    Query(_query): Query<UserFallbackQuery>,
+    Query(_query): Query<UserWorkspaceFallbackQuery>,
 ) -> Result<Json<serde_json::Value>, ErrorResponse> {
     let workspaces =
         db::models::workspace::Workspace::find_all_with_status(&deployment.db().pool, None, None)
@@ -305,4 +311,34 @@ pub async fn fallback_list_user_workspaces(
                 )
             })?;
     Ok(Json(serde_json::json!({ "workspaces": workspaces })))
+}
+
+pub async fn fallback_list_project_workspaces(
+    Query(_query): Query<ProjectFallbackQuery>,
+) -> Result<Json<serde_json::Value>, ErrorResponse> {
+    Ok(Json(serde_json::json!({ "workspaces": [] })))
+}
+
+pub async fn fallback_list_issue_followers(
+    Query(_query): Query<ProjectFallbackQuery>,
+) -> Result<Json<serde_json::Value>, ErrorResponse> {
+    Ok(Json(serde_json::json!({ "issue_followers": [] })))
+}
+
+pub async fn fallback_list_pull_requests(
+    Query(_query): Query<ProjectFallbackQuery>,
+) -> Result<Json<serde_json::Value>, ErrorResponse> {
+    Ok(Json(serde_json::json!({ "pull_requests": [] })))
+}
+
+pub async fn fallback_list_pull_request_issues(
+    Query(_query): Query<ProjectFallbackQuery>,
+) -> Result<Json<serde_json::Value>, ErrorResponse> {
+    Ok(Json(serde_json::json!({ "pull_request_issues": [] })))
+}
+
+pub async fn fallback_list_issue_comment_reactions(
+    Query(_query): Query<CommentFallbackQuery>,
+) -> Result<Json<serde_json::Value>, ErrorResponse> {
+    Ok(Json(serde_json::json!({ "issue_comment_reactions": [] })))
 }

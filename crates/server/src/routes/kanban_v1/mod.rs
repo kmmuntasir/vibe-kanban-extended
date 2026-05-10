@@ -57,6 +57,23 @@ pub fn router() -> Router<DeploymentImpl> {
             "/fallback/user_workspaces",
             get(fallback_list_user_workspaces),
         )
+        .route(
+            "/fallback/project_workspaces",
+            get(fallback_list_project_workspaces),
+        )
+        .route(
+            "/fallback/issue_followers",
+            get(fallback_list_issue_followers),
+        )
+        .route("/fallback/pull_requests", get(fallback_list_pull_requests))
+        .route(
+            "/fallback/pull_request_issues",
+            get(fallback_list_pull_request_issues),
+        )
+        .route(
+            "/fallback/issue_comment_reactions",
+            get(fallback_list_issue_comment_reactions),
+        )
         .nest("/projects", projects::router())
         .nest("/project_statuses", project_statuses::router())
         .nest("/tags", tags::router())
