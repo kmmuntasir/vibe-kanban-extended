@@ -4,6 +4,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
+use chrono::{DateTime, Utc};
 use db::models::{
     issue::Issue, issue_assignee::IssueAssignee, issue_comment::IssueComment,
     issue_relationship::IssueRelationship, issue_tag::IssueTag, kanban_tag::KanbanTag,
@@ -301,18 +302,107 @@ pub async fn fallback_list_users(
     Ok(Json(serde_json::json!({ "users": [] })))
 }
 
-pub async fn fallback_list_user_workspaces(
-    Query(_query): Query<UserWorkspaceFallbackQuery>,
-) -> Result<Json<serde_json::Value>, ErrorResponse> {
-    // Return empty list — workspace shape sync in local mode doesn't need
-    // real data; the workspace list is loaded via /api/workspaces endpoints.
-    Ok(Json(serde_json::json!({ "workspaces": [] })))
+#[derive(Debug, sqlx::FromRow)]
+struct WorkspaceFallbackRow {
+    id: Uuid,
+    issue_id: Option<Uuid>,
+    project_id: Option<Uuid>,
+    name: Option<String>,
+    archived: bool,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
 }
 
 pub async fn fallback_list_project_workspaces(
-    Query(_query): Query<OptionalProjectFallbackQuery>,
+    State(deployment): State<DeploymentImpl>,
+    Query(query): Query<OptionalProjectFallbackQuery>,
 ) -> Result<Json<serde_json::Value>, ErrorResponse> {
-    Ok(Json(serde_json::json!({ "workspaces": [] })))
+    let pool = &deployment.db().pool;
+    let rows: Vec<WorkspaceFallbackRow> = sqlx::query_as(
+        r#"SELECT id, issue_id, project_id, name,
+                  archived, created_at, updated_at
+           FROM workspaces
+           WHERE project_id = $1
+           ORDER BY updated_at DESC"#,
+    )
+    .bind(query.project_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| {
+        tracing::error!(?e, "failed to list project workspaces (fallback)");
+        ErrorResponse::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "failed to list project workspaces",
+        )
+    })?;
+
+    let local_user_id = Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap();
+    let workspaces: Vec<serde_json::Value> = rows
+        .into_iter()
+        .map(|r| {
+            serde_json::json!({
+                "id": r.id,
+                "project_id": r.project_id,
+                "owner_user_id": local_user_id,
+                "issue_id": r.issue_id,
+                "local_workspace_id": serde_json::Value::Null,
+                "name": r.name,
+                "archived": r.archived,
+                "files_changed": null,
+                "lines_added": null,
+                "lines_removed": null,
+                "created_at": r.created_at,
+                "updated_at": r.updated_at,
+            })
+        })
+        .collect();
+
+    Ok(Json(serde_json::json!({ "workspaces": workspaces })))
+}
+
+pub async fn fallback_list_user_workspaces(
+    State(deployment): State<DeploymentImpl>,
+    Query(_query): Query<UserWorkspaceFallbackQuery>,
+) -> Result<Json<serde_json::Value>, ErrorResponse> {
+    let pool = &deployment.db().pool;
+    let rows: Vec<WorkspaceFallbackRow> = sqlx::query_as(
+        r#"SELECT id, issue_id, project_id, name,
+                  archived, created_at, updated_at
+           FROM workspaces
+           ORDER BY updated_at DESC"#,
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| {
+        tracing::error!(?e, "failed to list user workspaces (fallback)");
+        ErrorResponse::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "failed to list user workspaces",
+        )
+    })?;
+
+    let local_user_id = Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap();
+    let workspaces: Vec<serde_json::Value> = rows
+        .into_iter()
+        .map(|r| {
+            serde_json::json!({
+                "id": r.id,
+                "project_id": r.project_id,
+                "owner_user_id": local_user_id,
+                "issue_id": r.issue_id,
+                "local_workspace_id": serde_json::Value::Null,
+                "name": r.name,
+                "archived": r.archived,
+                "files_changed": null,
+                "lines_added": null,
+                "lines_removed": null,
+                "created_at": r.created_at,
+                "updated_at": r.updated_at,
+            })
+        })
+        .collect();
+
+    Ok(Json(serde_json::json!({ "workspaces": workspaces })))
 }
 
 pub async fn fallback_list_issue_followers(

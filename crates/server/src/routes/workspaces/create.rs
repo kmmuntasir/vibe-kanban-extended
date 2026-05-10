@@ -23,6 +23,8 @@ use crate::{
 pub(crate) async fn create_workspace_record(
     deployment: &DeploymentImpl,
     name: Option<String>,
+    issue_id: Option<Uuid>,
+    project_id: Option<Uuid>,
 ) -> Result<Workspace, ApiError> {
     let workspace_id = Uuid::new_v4();
     let branch_label = name
@@ -34,7 +36,7 @@ pub(crate) async fn create_workspace_record(
         .git_branch_from_workspace(&workspace_id, branch_label)
         .await;
 
-    let workspace = Workspace::create(
+    let mut workspace = Workspace::create(
         &deployment.db().pool,
         &CreateWorkspace {
             branch: git_branch_name,
@@ -44,6 +46,21 @@ pub(crate) async fn create_workspace_record(
     )
     .await?;
 
+    // Store issue link locally if provided from linked issue
+    if issue_id.is_some() || project_id.is_some() {
+        workspace.issue_id = issue_id;
+        workspace.project_id = project_id;
+        sqlx::query(
+            "UPDATE workspaces SET issue_id = $1, project_id = $2, updated_at = datetime('now') WHERE id = $3",
+        )
+        .bind(issue_id)
+        .bind(project_id)
+        .bind(workspace_id)
+        .execute(&deployment.db().pool)
+        .await
+        .map_err(|e| ApiError::Database(e))?;
+    }
+
     Ok(workspace)
 }
 
@@ -51,7 +68,7 @@ pub async fn create_workspace(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateWorkspaceApiRequest>,
 ) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
-    let workspace = create_workspace_record(&deployment, payload.name).await?;
+    let workspace = create_workspace_record(&deployment, payload.name, None, None).await?;
 
     deployment
         .track_if_analytics_allowed(
@@ -236,7 +253,15 @@ pub async fn create_and_start_workspace(
 
     let mut managed_workspace = deployment
         .workspace_manager()
-        .load_managed_workspace(create_workspace_record(&deployment, name).await?)
+        .load_managed_workspace(
+            create_workspace_record(
+                &deployment,
+                name,
+                linked_issue.as_ref().map(|li| li.issue_id),
+                linked_issue.as_ref().map(|li| li.remote_project_id),
+            )
+            .await?,
+        )
         .await?;
 
     for repo in &repos {

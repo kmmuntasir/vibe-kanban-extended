@@ -1,0 +1,2 @@
+ALTER TABLE workspaces ADD COLUMN issue_id BLOB REFERENCES issues(id) ON DELETE SET NULL;
+ALTER TABLE workspaces ADD COLUMN project_id BLOB;
