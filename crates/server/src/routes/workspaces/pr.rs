@@ -329,6 +329,11 @@ pub async fn create_pr(
                 tokio::spawn(async move {
                     remote_sync::sync_pr_to_remote(&client, request).await;
                 });
+            } else if let (Some(issue_id), Some(project_id)) =
+                (workspace.issue_id, workspace.project_id)
+            {
+                super::links::auto_move_issue_to_in_review(&deployment, issue_id, project_id)
+                    .await?;
             }
 
             // Auto-open PR in browser

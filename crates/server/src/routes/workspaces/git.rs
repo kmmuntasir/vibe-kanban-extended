@@ -245,6 +245,8 @@ pub async fn merge_workspace(
         tokio::spawn(async move {
             remote_sync::sync_local_workspace_merge_to_remote(&client, workspace_id).await;
         });
+    } else if let (Some(issue_id), Some(project_id)) = (workspace.issue_id, workspace.project_id) {
+        super::links::auto_move_issue_to_done(&deployment, issue_id, project_id).await?;
     }
 
     if !workspace.pinned

@@ -185,6 +185,110 @@ async fn auto_move_issue_to_in_progress(
     Ok(())
 }
 
+/// In local mode, move an issue to "In review" when a PR is created for its
+/// workspace, mirroring the remote server's PR-open workflow signal.
+pub(super) async fn auto_move_issue_to_in_review(
+    deployment: &DeploymentImpl,
+    issue_id: Uuid,
+    project_id: Uuid,
+) -> Result<(), ApiError> {
+    let pool = &deployment.db().pool;
+
+    #[derive(sqlx::FromRow)]
+    struct StatusRow {
+        id: Uuid,
+        #[allow(dead_code)]
+        name: String,
+    }
+    let in_review: Option<StatusRow> = sqlx::query_as(
+        r#"SELECT id, name FROM project_statuses
+           WHERE project_id = $1 AND lower(name) = 'in review'"#,
+    )
+    .bind(project_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| ApiError::Database(e))?;
+
+    let Some(in_review) = in_review else {
+        return Ok(());
+    };
+
+    #[derive(sqlx::FromRow)]
+    struct NameRow {
+        name: String,
+    }
+    let current: Option<NameRow> = sqlx::query_as(
+        r#"SELECT ps.name
+           FROM issues i
+           JOIN project_statuses ps ON ps.id = i.status_id
+           WHERE i.id = $1"#,
+    )
+    .bind(issue_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| ApiError::Database(e))?;
+
+    let Some(current) = current else {
+        return Ok(());
+    };
+
+    let current_lower = current.name.to_lowercase();
+    if current_lower != "to do" && current_lower != "backlog" && current_lower != "in progress" {
+        return Ok(());
+    };
+
+    sqlx::query(
+        "UPDATE issues SET status_id = $1, updated_at = datetime('now', 'subsec') WHERE id = $2",
+    )
+    .bind(in_review.id)
+    .bind(issue_id)
+    .execute(pool)
+    .await
+    .map_err(|e| ApiError::Database(e))?;
+
+    Ok(())
+}
+
+/// In local mode, move an issue to "Done" when its workspace is merged,
+/// mirroring the remote server's WorkMerged signal logic.
+pub(super) async fn auto_move_issue_to_done(
+    deployment: &DeploymentImpl,
+    issue_id: Uuid,
+    project_id: Uuid,
+) -> Result<(), ApiError> {
+    let pool = &deployment.db().pool;
+
+    #[derive(sqlx::FromRow)]
+    struct StatusRow {
+        id: Uuid,
+        #[allow(dead_code)]
+        name: String,
+    }
+    let done: Option<StatusRow> = sqlx::query_as(
+        r#"SELECT id, name FROM project_statuses
+           WHERE project_id = $1 AND lower(name) = 'done'"#,
+    )
+    .bind(project_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| ApiError::Database(e))?;
+
+    let Some(done) = done else {
+        return Ok(());
+    };
+
+    sqlx::query(
+        "UPDATE issues SET status_id = $1, updated_at = datetime('now', 'subsec') WHERE id = $2",
+    )
+    .bind(done.id)
+    .bind(issue_id)
+    .execute(pool)
+    .await
+    .map_err(|e| ApiError::Database(e))?;
+
+    Ok(())
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let post_router = Router::new()
         .route("/", post(link_workspace))
