@@ -107,15 +107,26 @@ pub async fn unlink_workspace(
     AxumPath(workspace_id): AxumPath<uuid::Uuid>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
-    let client = deployment.remote_client()?;
-
-    match client.delete_workspace(workspace_id).await {
-        Ok(()) => Ok(ResponseJson(ApiResponse::success(()))),
-        Err(RemoteClientError::Http { status: 404, .. }) => {
-            Ok(ResponseJson(ApiResponse::success(())))
+    if let Ok(client) = deployment.remote_client() {
+        match client.delete_workspace(workspace_id).await {
+            Ok(()) => return Ok(ResponseJson(ApiResponse::success(()))),
+            Err(RemoteClientError::Http { status: 404, .. }) => {
+                return Ok(ResponseJson(ApiResponse::success(())));
+            }
+            Err(e) => return Err(e.into()),
         }
-        Err(e) => Err(e.into()),
     }
+
+    // Local mode: clear the workspace-issue link in the local DB
+    sqlx::query(
+        "UPDATE workspaces SET issue_id = NULL, project_id = NULL, updated_at = datetime('now', 'subsec') WHERE id = $1",
+    )
+    .bind(workspace_id)
+    .execute(&deployment.db().pool)
+    .await
+    .map_err(|e| ApiError::Database(e))?;
+
+    Ok(ResponseJson(ApiResponse::success(())))
 }
 
 /// In local mode, move an issue to "In progress" when a workspace is linked,
