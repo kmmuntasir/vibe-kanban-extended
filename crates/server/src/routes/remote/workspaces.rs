@@ -5,6 +5,7 @@ use axum::{
     response::Json as ResponseJson,
     routing::get,
 };
+use db::models::workspace::WorkspaceError;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
@@ -21,7 +22,11 @@ async fn get_workspace_by_local_id(
     State(deployment): State<DeploymentImpl>,
     Path(local_workspace_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
-    let client = deployment.remote_client()?;
-    let workspace = client.get_workspace_by_local_id(local_workspace_id).await?;
+    // Local mode has no remote workspace registry. Return 404 (not 400) — the MCP
+    // treats non-success here as "no remote context" and degrades gracefully.
+    let workspace = match deployment.remote_client() {
+        Ok(client) => client.get_workspace_by_local_id(local_workspace_id).await?,
+        Err(_) => return Err(ApiError::Workspace(WorkspaceError::WorkspaceNotFound)),
+    };
     Ok(ResponseJson(ApiResponse::success(workspace)))
 }

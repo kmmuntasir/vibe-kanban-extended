@@ -5,10 +5,12 @@ use axum::{
     response::Json as ResponseJson,
     routing::get,
 };
+use deployment::Deployment;
 use serde::Deserialize;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
+use super::local_fallback;
 use crate::{DeploymentImpl, error::ApiError};
 
 #[derive(Debug, Deserialize)]
@@ -26,8 +28,12 @@ async fn list_remote_projects(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<ListRemoteProjectsQuery>,
 ) -> Result<ResponseJson<ApiResponse<ListProjectsResponse>>, ApiError> {
-    let client = deployment.remote_client()?;
-    let response = client.list_remote_projects(query.organization_id).await?;
+    let response = match deployment.remote_client() {
+        Ok(client) => client.list_remote_projects(query.organization_id).await?,
+        Err(_) => {
+            local_fallback::list_projects(&deployment.db().pool, query.organization_id).await?
+        }
+    };
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 
@@ -35,7 +41,9 @@ async fn get_remote_project(
     State(deployment): State<DeploymentImpl>,
     Path(project_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
-    let client = deployment.remote_client()?;
-    let project = client.get_remote_project(project_id).await?;
+    let project = match deployment.remote_client() {
+        Ok(client) => client.get_remote_project(project_id).await?,
+        Err(_) => local_fallback::get_project(&deployment.db().pool, project_id).await?,
+    };
     Ok(ResponseJson(ApiResponse::success(project)))
 }

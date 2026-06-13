@@ -6,6 +6,7 @@ mod issue_assignees;
 mod issue_relationships;
 mod issue_tags;
 mod issues;
+mod local_fallback;
 mod project_statuses;
 mod projects;
 pub mod pull_requests;

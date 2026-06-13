@@ -5,10 +5,12 @@ use axum::{
     response::Json as ResponseJson,
     routing::get,
 };
+use deployment::Deployment;
 use serde::Deserialize;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
+use super::local_fallback;
 use crate::{DeploymentImpl, error::ApiError};
 
 #[derive(Debug, Deserialize)]
@@ -29,8 +31,10 @@ async fn list_issue_tags(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<ListIssueTagsQuery>,
 ) -> Result<ResponseJson<ApiResponse<ListIssueTagsResponse>>, ApiError> {
-    let client = deployment.remote_client()?;
-    let response = client.list_issue_tags(query.issue_id).await?;
+    let response = match deployment.remote_client() {
+        Ok(client) => client.list_issue_tags(query.issue_id).await?,
+        Err(_) => local_fallback::list_issue_tags(&deployment.db().pool, query.issue_id).await?,
+    };
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 
@@ -38,8 +42,10 @@ async fn get_issue_tag(
     State(deployment): State<DeploymentImpl>,
     Path(issue_tag_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<IssueTag>>, ApiError> {
-    let client = deployment.remote_client()?;
-    let response = client.get_issue_tag(issue_tag_id).await?;
+    let response = match deployment.remote_client() {
+        Ok(client) => client.get_issue_tag(issue_tag_id).await?,
+        Err(_) => local_fallback::get_issue_tag(&deployment.db().pool, issue_tag_id).await?,
+    };
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 
@@ -47,8 +53,10 @@ async fn create_issue_tag(
     State(deployment): State<DeploymentImpl>,
     Json(request): Json<CreateIssueTagRequest>,
 ) -> Result<ResponseJson<ApiResponse<MutationResponse<IssueTag>>>, ApiError> {
-    let client = deployment.remote_client()?;
-    let response = client.create_issue_tag(&request).await?;
+    let response = match deployment.remote_client() {
+        Ok(client) => client.create_issue_tag(&request).await?,
+        Err(_) => local_fallback::create_issue_tag(&deployment.db().pool, &request).await?,
+    };
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 
@@ -56,7 +64,13 @@ async fn delete_issue_tag(
     State(deployment): State<DeploymentImpl>,
     Path(issue_tag_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
-    let client = deployment.remote_client()?;
-    client.delete_issue_tag(issue_tag_id).await?;
+    match deployment.remote_client() {
+        Ok(client) => {
+            client.delete_issue_tag(issue_tag_id).await?;
+        }
+        Err(_) => {
+            local_fallback::delete_issue_tag(&deployment.db().pool, issue_tag_id).await?;
+        }
+    };
     Ok(ResponseJson(ApiResponse::success(())))
 }

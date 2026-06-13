@@ -2,8 +2,9 @@ use api_types::{
     AcceptInvitationResponse, CreateInvitationRequest, CreateInvitationResponse,
     CreateOrganizationRequest, CreateOrganizationResponse, GetInvitationResponse,
     GetOrganizationResponse, ListInvitationsResponse, ListMembersResponse,
-    ListOrganizationsResponse, Organization, RevokeInvitationRequest, UpdateMemberRoleRequest,
-    UpdateMemberRoleResponse, UpdateOrganizationRequest,
+    ListOrganizationsResponse, MemberRole, Organization, OrganizationWithRole,
+    RevokeInvitationRequest, UpdateMemberRoleRequest, UpdateMemberRoleResponse,
+    UpdateOrganizationRequest,
 };
 use axum::{
     Router,
@@ -12,6 +13,7 @@ use axum::{
     response::Json as ResponseJson,
     routing::{delete, get, patch, post},
 };
+use db::models::organization::Organization as DbOrganization;
 use deployment::Deployment;
 use utils::response::ApiResponse;
 use uuid::Uuid;
@@ -50,9 +52,27 @@ pub fn router() -> Router<DeploymentImpl> {
 async fn list_organizations(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<ListOrganizationsResponse>>, ApiError> {
-    let client = deployment.remote_client()?;
-
-    let response = client.list_organizations().await?;
+    let response = match deployment.remote_client() {
+        Ok(client) => client.list_organizations().await?,
+        Err(_) => {
+            let orgs = DbOrganization::find_all(&deployment.db().pool).await?;
+            ListOrganizationsResponse {
+                organizations: orgs
+                    .into_iter()
+                    .map(|org| OrganizationWithRole {
+                        id: org.id,
+                        name: org.name,
+                        slug: org.slug,
+                        is_personal: org.is_personal,
+                        issue_prefix: org.issue_prefix,
+                        created_at: org.created_at,
+                        updated_at: org.updated_at,
+                        user_role: MemberRole::Admin,
+                    })
+                    .collect(),
+            }
+        }
+    };
 
     Ok(ResponseJson(ApiResponse::success(response)))
 }
@@ -185,9 +205,12 @@ async fn list_members(
     State(deployment): State<DeploymentImpl>,
     Path(org_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<ListMembersResponse>>, ApiError> {
-    let client = deployment.remote_client()?;
-
-    let response = client.list_members(org_id).await?;
+    // Local mode has no member directory; return an empty list so MCP/clients
+    // degrade gracefully instead of a 400.
+    let response = match deployment.remote_client() {
+        Ok(client) => client.list_members(org_id).await?,
+        Err(_) => ListMembersResponse { members: vec![] },
+    };
 
     Ok(ResponseJson(ApiResponse::success(response)))
 }

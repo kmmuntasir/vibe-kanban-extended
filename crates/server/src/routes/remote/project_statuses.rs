@@ -5,10 +5,12 @@ use axum::{
     response::Json as ResponseJson,
     routing::get,
 };
+use deployment::Deployment;
 use serde::Deserialize;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
+use super::local_fallback;
 use crate::{DeploymentImpl, error::ApiError};
 
 #[derive(Debug, Deserialize)]
@@ -24,7 +26,11 @@ async fn list_project_statuses(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<ListProjectStatusesQuery>,
 ) -> Result<ResponseJson<ApiResponse<ListProjectStatusesResponse>>, ApiError> {
-    let client = deployment.remote_client()?;
-    let response = client.list_project_statuses(query.project_id).await?;
+    let response = match deployment.remote_client() {
+        Ok(client) => client.list_project_statuses(query.project_id).await?,
+        Err(_) => {
+            local_fallback::list_project_statuses(&deployment.db().pool, query.project_id).await?
+        }
+    };
     Ok(ResponseJson(ApiResponse::success(response)))
 }

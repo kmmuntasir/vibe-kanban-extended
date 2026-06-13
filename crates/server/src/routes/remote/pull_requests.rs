@@ -23,8 +23,14 @@ async fn list_pull_requests(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<ListPullRequestsQuery>,
 ) -> Result<ResponseJson<ApiResponse<ListPullRequestsResponse>>, ApiError> {
-    let client = deployment.remote_client()?;
-    let response = client.list_pull_requests(query.issue_id).await?;
+    // Local mode has no remote PR registry keyed by issue; return an empty list
+    // rather than a 400 so MCP/clients degrade gracefully.
+    let response = match deployment.remote_client() {
+        Ok(client) => client.list_pull_requests(query.issue_id).await?,
+        Err(_) => ListPullRequestsResponse {
+            pull_requests: vec![],
+        },
+    };
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 
