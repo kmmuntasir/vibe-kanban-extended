@@ -167,7 +167,7 @@ pub async fn create_issue(
         request.target_date,
         request.completed_at,
         request.sort_order as i32,
-        request.parent_issue_id,
+        request.parent_issue_id.filter(|id| *id != Uuid::nil()),
         request.parent_issue_sort_order,
         &request.extension_metadata,
         None,
@@ -198,7 +198,9 @@ pub async fn update_issue(
         request.target_date,
         request.completed_at,
         request.sort_order.map(|s| s as i32),
-        request.parent_issue_id,
+        request
+            .parent_issue_id
+            .map(|inner| inner.filter(|id| *id != Uuid::nil())),
         request.parent_issue_sort_order,
         request.extension_metadata.as_ref(),
     )
